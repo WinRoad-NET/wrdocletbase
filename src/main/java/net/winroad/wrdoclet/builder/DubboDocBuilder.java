@@ -25,18 +25,40 @@ import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.Tag;
+import com.sun.tools.doclets.internal.toolkit.Configuration;
 
 public class DubboDocBuilder extends AbstractServiceDocBuilder {
-	protected List<String> dubboInterfaces = null;
+	protected LinkedList<String> dubboInterfaces = null;
 
 	public DubboDocBuilder(WRDoc wrDoc) {
 		super(wrDoc);
 		this.logger = LoggerFactory.getLogger(this.getClass());
 		dubboInterfaces = this.getDubboInterfaces();
 	}
+	
+	@Override
+	protected void processOpenAPIClasses(ClassDoc[] classes,
+			Configuration configuration) {
+		LinkedList<String> annotationDubboInterfaces = getAnnotationDubboInterfaces(classes);
+		dubboInterfaces.addAll(annotationDubboInterfaces);
+		super.processOpenAPIClasses(classes, configuration);
+	}
 
-	protected List<String> getDubboInterfaces() {
-		List<String> result = new LinkedList<String>();
+	protected LinkedList<String> getAnnotationDubboInterfaces(ClassDoc[] classes) {
+		LinkedList<String> result = new LinkedList<String>();
+		for (int i = 0; i < classes.length; i++) {
+			// implementation class which used com.alibaba.dubbo.config.annotation.Service 
+			if(isClassDocAnnotatedWith(classes[i],"Service")) {
+				for(ClassDoc classDoc : classes[i].interfaces()) {
+					result.add(classDoc.qualifiedName());
+				}
+			}
+		}
+		return result;
+	}
+	
+	protected LinkedList<String> getDubboInterfaces() {
+		LinkedList<String> result = new LinkedList<String>();
 		try {
 			Document dubboConfig = readXMLConfig(((AbstractConfiguration) this.wrDoc
 					.getConfiguration()).dubboconfigpath);
