@@ -303,18 +303,18 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				apiParameter.setHistory(this
 						.getModificationHistory(parameters[i].type()));
 				StringBuffer buf = new StringBuffer();
+				for (Tag tag : method.tags("param")) {
+					if (parameters[i].name().equals(
+							((ParamTag) tag).parameterName())) {
+						buf.append(((ParamTag) tag).parameterComment());
+						buf.append(" ");
+					}
+				}
 				for (int j = 0; j < annotations.length; j++) {
 					processAnnotations(annotations[j], apiParameter);
 					buf.append("@");
 					buf.append(annotations[j].annotationType().name());
 					buf.append(" ");
-				}
-				for (Tag tag : method.tags("param")) {
-					if (parameters[i].name().equals(
-							((ParamTag) tag).parameterName())) {
-						buf.append("\n");
-						buf.append(((ParamTag) tag).parameterComment());
-					}
 				}
 				apiParameter.setDescription(buf.toString());
 				paramList.add(apiParameter);
@@ -323,101 +323,6 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 
 		handleRefReq(method, paramList);
 		return paramList;
-	}
-
-	private void processAnnotations(AnnotationDesc annotation,
-			APIParameter apiParameter) {
-		if ("org.springframework.web.bind.annotation.RequestBody"
-				.equals(annotation.annotationType().qualifiedName())
-				&& annotation.elementValues() != null
-				&& annotation.elementValues().length != 0) {
-			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("required")) {
-					if (annotation.elementValues()[0].value().value()
-							.equals(true)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
-					} else {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
-					}
-				}
-			}
-		}
-		if ("org.springframework.web.bind.annotation.PathVariable"
-				.equals(annotation.annotationType().qualifiedName())) {
-			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("value")) {
-					if (annotation.elementValues()[0].value() != null) {
-						apiParameter.setName(annotation.elementValues()[0]
-								.value().toString().replace("\"", ""));
-					}
-				}
-			}
-		}
-		if ("org.springframework.web.bind.annotation.RequestParam"
-				.equals(annotation.annotationType().qualifiedName())) {
-			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("value")) {
-					if (annotation.elementValues()[0].value() != null) {
-						apiParameter.setName(annotation.elementValues()[0]
-								.value().toString().replace("\"", ""));
-					}
-				}
-				if (pair.element().name().equals("required")) {
-					if (annotation.elementValues()[0].value().value()
-							.equals(true)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
-					} else {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
-					}
-				}
-			}
-		}
-	}
-
-	private void handleRefReq(MethodDoc method, List<APIParameter> paramList) {
-		Tag[] tags = method.tags(WRRefReqTaglet.NAME);
-		for (int i = 0; i < tags.length; i++) {
-			APIParameter apiParameter = new APIParameter();
-			String[] strArr = tags[i].text().split(" ");
-			for (int j = 0; j < strArr.length; j++) {
-				switch (j) {
-				case 0:
-					apiParameter.setName(strArr[j]);
-					break;
-				case 1:
-					apiParameter.setType(strArr[j]);
-					break;
-				case 2:
-					apiParameter.setDescription(strArr[j]);
-					break;
-				case 3:
-					if (StringUtils.equalsIgnoreCase(strArr[j],
-							WROccursTaglet.REQUIRED)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
-					} else if (StringUtils.equalsIgnoreCase(strArr[j],
-							WROccursTaglet.OPTIONAL)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
-					}
-					break;
-				default:
-					logger.warn("Unexpected tag:" + tags[i].text());
-				}
-			}
-			HashSet<String> processingClasses = new HashSet<String>();
-			ClassDoc c = this.wrDoc.getConfiguration().root
-					.classNamed(apiParameter.getType());
-			if (c != null) {
-				apiParameter.setFields(this.getFields(c, ParameterType.Request,
-						processingClasses));
-			}
-			paramList.add(apiParameter);
-		}
 	}
 
 	/*

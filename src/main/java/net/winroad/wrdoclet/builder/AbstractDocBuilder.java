@@ -27,6 +27,7 @@ import net.winroad.wrdoclet.taglets.WRBriefTaglet;
 import net.winroad.wrdoclet.taglets.WRMemoTaglet;
 import net.winroad.wrdoclet.taglets.WROccursTaglet;
 import net.winroad.wrdoclet.taglets.WRParamTaglet;
+import net.winroad.wrdoclet.taglets.WRRefReqTaglet;
 import net.winroad.wrdoclet.taglets.WRReturnCodeTaglet;
 import net.winroad.wrdoclet.taglets.WRReturnTaglet;
 import net.winroad.wrdoclet.taglets.WRTagTaglet;
@@ -50,6 +51,7 @@ import com.sun.javadoc.ParamTag;
 import com.sun.javadoc.ParameterizedType;
 import com.sun.javadoc.Tag;
 import com.sun.javadoc.Type;
+import com.sun.javadoc.AnnotationDesc.ElementValuePair;
 import com.sun.tools.doclets.internal.toolkit.Configuration;
 import com.sun.tools.doclets.internal.toolkit.util.Util;
 
@@ -716,4 +718,100 @@ public abstract class AbstractDocBuilder {
 		}
 		return null;
 	}
+	
+	protected void processAnnotations(AnnotationDesc annotation,
+			APIParameter apiParameter) {
+		if ("org.springframework.web.bind.annotation.RequestBody"
+				.equals(annotation.annotationType().qualifiedName())
+				&& annotation.elementValues() != null
+				&& annotation.elementValues().length != 0) {
+			for (ElementValuePair pair : annotation.elementValues()) {
+				if (pair.element().name().equals("required")) {
+					if (annotation.elementValues()[0].value().value()
+							.equals(true)) {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.REQUIRED);
+					} else {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.OPTIONAL);
+					}
+				}
+			}
+		}
+		if ("org.springframework.web.bind.annotation.PathVariable"
+				.equals(annotation.annotationType().qualifiedName())) {
+			for (ElementValuePair pair : annotation.elementValues()) {
+				if (pair.element().name().equals("value")) {
+					if (annotation.elementValues()[0].value() != null) {
+						apiParameter.setName(annotation.elementValues()[0]
+								.value().toString().replace("\"", ""));
+					}
+				}
+			}
+		}
+		if ("org.springframework.web.bind.annotation.RequestParam"
+				.equals(annotation.annotationType().qualifiedName())) {
+			for (ElementValuePair pair : annotation.elementValues()) {
+				if (pair.element().name().equals("value")) {
+					if (annotation.elementValues()[0].value() != null) {
+						apiParameter.setName(annotation.elementValues()[0]
+								.value().toString().replace("\"", ""));
+					}
+				}
+				if (pair.element().name().equals("required")) {
+					if (annotation.elementValues()[0].value().value()
+							.equals(true)) {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.REQUIRED);
+					} else {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.OPTIONAL);
+					}
+				}
+			}
+		}
+	}
+
+	protected void handleRefReq(MethodDoc method, List<APIParameter> paramList) {
+		Tag[] tags = method.tags(WRRefReqTaglet.NAME);
+		for (int i = 0; i < tags.length; i++) {
+			APIParameter apiParameter = new APIParameter();
+			String[] strArr = tags[i].text().split(" ");
+			for (int j = 0; j < strArr.length; j++) {
+				switch (j) {
+				case 0:
+					apiParameter.setName(strArr[j]);
+					break;
+				case 1:
+					apiParameter.setType(strArr[j]);
+					break;
+				case 2:
+					apiParameter.setDescription(strArr[j]);
+					break;
+				case 3:
+					if (StringUtils.equalsIgnoreCase(strArr[j],
+							WROccursTaglet.REQUIRED)) {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.REQUIRED);
+					} else if (StringUtils.equalsIgnoreCase(strArr[j],
+							WROccursTaglet.OPTIONAL)) {
+						apiParameter
+								.setParameterOccurs(ParameterOccurs.OPTIONAL);
+					}
+					break;
+				default:
+					logger.warn("Unexpected tag:" + tags[i].text());
+				}
+			}
+			HashSet<String> processingClasses = new HashSet<String>();
+			ClassDoc c = this.wrDoc.getConfiguration().root
+					.classNamed(apiParameter.getType());
+			if (c != null) {
+				apiParameter.setFields(this.getFields(c, ParameterType.Request,
+						processingClasses));
+			}
+			paramList.add(apiParameter);
+		}
+	}
+	
 }

@@ -1,5 +1,6 @@
 package net.winroad.wrdoclet.builder;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,8 +22,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.MethodDoc;
+import com.sun.javadoc.ParamTag;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.Tag;
 import com.sun.tools.doclets.internal.toolkit.Configuration;
@@ -30,6 +33,9 @@ import com.sun.tools.doclets.internal.toolkit.Configuration;
 public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	protected LinkedList<String> dubboInterfaces = null;
 
+	//methodDoc in interfaces map to methodDoc in implementation classes
+	protected HashMap<MethodDoc, MethodDoc> stubImplMethodMap = new HashMap<>();
+	
 	public DubboDocBuilder(WRDoc wrDoc) {
 		super(wrDoc);
 		this.logger = LoggerFactory.getLogger(this.getClass());
@@ -39,18 +45,32 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	@Override
 	protected void processOpenAPIClasses(ClassDoc[] classes,
 			Configuration configuration) {
-		LinkedList<String> annotationDubboInterfaces = getAnnotationDubboInterfaces(classes);
+		LinkedList<String> annotationDubboInterfaces = processAnnotationDubboInterfaces(classes);
 		dubboInterfaces.addAll(annotationDubboInterfaces);
 		super.processOpenAPIClasses(classes, configuration);
 	}
 
-	protected LinkedList<String> getAnnotationDubboInterfaces(ClassDoc[] classes) {
+	protected LinkedList<String> processAnnotationDubboInterfaces(ClassDoc[] classes) {
 		LinkedList<String> result = new LinkedList<String>();
 		for (int i = 0; i < classes.length; i++) {
 			// implementation class which used com.alibaba.dubbo.config.annotation.Service 
 			if(isClassDocAnnotatedWith(classes[i],"Service")) {
-				for(ClassDoc classDoc : classes[i].interfaces()) {
-					result.add(classDoc.qualifiedName());
+				for(ClassDoc interfaceClassDoc : classes[i].interfaces()) {
+					result.add(interfaceClassDoc.qualifiedName());
+					// mapping the method in interface to the method in implementation class
+					for(MethodDoc implMethodDoc : classes[i].methods()) {
+						MethodDoc overriddenMethod = implMethodDoc.overriddenMethod();
+						if(overriddenMethod != null) {
+							stubImplMethodMap.put(overriddenMethod, implMethodDoc);
+						} else {
+							//It seems that MethodDoc.overriddenMethod() doesn't work, but MethodDoc.overrides() works fine.
+							for(MethodDoc interfaceMethodDoc : interfaceClassDoc.methods()) {
+								if(implMethodDoc.overrides(interfaceMethodDoc)) {
+									stubImplMethodMap.put(interfaceMethodDoc, implMethodDoc);
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -114,23 +134,48 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	}
 
 	@Override
-	protected List<APIParameter> getInputParams(MethodDoc methodDoc) {
+	protected List<APIParameter> getInputParams(MethodDoc method) {
 		List<APIParameter> paramList = new LinkedList<APIParameter>();
-		Parameter[] methodParameters = methodDoc.parameters();
-		if (methodParameters.length != 0) {
-			for (int i = 0; i < methodParameters.length; i++) {
-				APIParameter p = new APIParameter();
-				p.setName(methodParameters[i].name());
-				p.setType(this.getTypeName(methodParameters[i].type(), false));
-				p.setDescription(this.getParamComment(methodDoc, methodParameters[i].name()));
-				HashSet<String> processingClasses = new HashSet<String>();
-				p.setFields(this.getFields(methodParameters[i].type(),
-						ParameterType.Request, processingClasses));
-				paramList.add(p);
+		paramList.addAll(parseCustomizedParameters(method));
+		Parameter[] parameters = method.parameters();
+		MethodDoc implMethod = stubImplMethodMap.get(method);
+		Parameter[] implParams = implMethod == null ? null : implMethod.parameters();
+		for (int i = 0; i < parameters.length; i++) {
+			AnnotationDesc[] annotations = parameters[i].annotations();
+			AnnotationDesc[] implAnnotations = implParams == null ? null : implParams[i].annotations();
+			APIParameter apiParameter = new APIParameter();
+			if(annotations.length == 0 && implAnnotations != null) {
+				annotations = implAnnotations;
 			}
+			apiParameter.setType(this.getTypeName(parameters[i].type(), false));
+			apiParameter.setName(parameters[i].name());
+			HashSet<String> processingClasses = new HashSet<String>();
+			apiParameter.setFields(this.getFields(parameters[i].type(),
+					ParameterType.Request, processingClasses));
+			apiParameter.setHistory(this
+					.getModificationHistory(parameters[i].type()));
+			StringBuffer buf = new StringBuffer();
+			for (Tag tag : method.tags("param")) {
+				if (parameters[i].name().equals(
+						((ParamTag) tag).parameterName())) {
+					buf.append(((ParamTag) tag).parameterComment());
+					buf.append(" ");
+				}
+			}
+			for (int j = 0; j < annotations.length; j++) {
+				processAnnotations(annotations[j], apiParameter);
+				buf.append("@");
+				buf.append(annotations[j].annotationType().name());
+				buf.append(" ");
+			}
+			apiParameter.setDescription(buf.toString());
+			paramList.add(apiParameter);
 		}
+
+		handleRefReq(method, paramList);
 		return paramList;
 	}
+
 
 	@Override
 	protected boolean isServiceInterface(ClassDoc classDoc) {

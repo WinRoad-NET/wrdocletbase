@@ -8,13 +8,13 @@ public class ModificationHistory {
 		this.modificationRecordList = new LinkedList<ModificationRecord>();
 	}
 
-	public ModificationHistory(List<ModificationRecord> modificationRecordList) {
+	public ModificationHistory(LinkedList<ModificationRecord> modificationRecordList) {
 		this.modificationRecordList = modificationRecordList;
 	}
 
-	private List<ModificationRecord> modificationRecordList;
+	private LinkedList<ModificationRecord> modificationRecordList;
 
-	public List<ModificationRecord> getModificationRecordList() {
+	public LinkedList<ModificationRecord> getModificationRecordList() {
 		return modificationRecordList;
 	}
 
