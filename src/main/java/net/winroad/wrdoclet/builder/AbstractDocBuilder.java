@@ -49,6 +49,7 @@ import com.sun.javadoc.MemberDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.ParamTag;
 import com.sun.javadoc.ParameterizedType;
+import com.sun.javadoc.ProgramElementDoc;
 import com.sun.javadoc.Tag;
 import com.sun.javadoc.Type;
 import com.sun.javadoc.AnnotationDesc.ElementValuePair;
@@ -225,11 +226,11 @@ public abstract class AbstractDocBuilder {
 		return null;
 	}
 
-	protected boolean isClassDocAnnotatedWith(ClassDoc classDoc,
+	protected boolean isProgramElementDocAnnotatedWith(ProgramElementDoc elementDoc,
 			String annotation) {
-		AnnotationDesc[] annotations = classDoc.annotations();
+		AnnotationDesc[] annotations = elementDoc.annotations();
 		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().name().equals(annotation)) {
+			if (annotations[i].annotationType().qualifiedTypeName().equals(annotation)) {
 				return true;
 			}
 		}
@@ -415,7 +416,11 @@ public abstract class AbstractDocBuilder {
 			ParameterType paramType, HashSet<String> processingClasses) {
 		processingClasses.add(classDoc.toString());
 		List<APIParameter> result = new LinkedList<APIParameter>();
-
+		
+		boolean isLomBokClass = this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Data") || 
+				(paramType == ParameterType.Response && this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Getter")) ||
+				(paramType == ParameterType.Request && this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Setter"));
+		
 		ClassDoc superClassDoc = classDoc.superclass();
 		if (superClassDoc != null
 				&& !this.isInStopClasses(superClassDoc)
@@ -435,7 +440,9 @@ public abstract class AbstractDocBuilder {
 		HashMap<String, String> privateJsonField = new HashMap<String, String>();
 		
 		for (FieldDoc fieldDoc : fieldDocs) {
-			if (fieldDoc.isPublic() && !fieldDoc.isStatic()) {
+			if (!fieldDoc.isStatic() && (fieldDoc.isPublic() || isLomBokClass ||
+					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Getter") && paramType == ParameterType.Response) ||
+					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Setter") && paramType == ParameterType.Request))) {
 				APIParameter param = new APIParameter();
 				param.setName(fieldDoc.name());
 				param.setType(this.getTypeName(fieldDoc.type(), false));
@@ -560,7 +567,9 @@ public abstract class AbstractDocBuilder {
 			if(annotationDesc.annotationType().qualifiedTypeName()
 					.startsWith("org.hibernate.validator.constraints") ||
 				annotationDesc.annotationType().qualifiedTypeName()
-					.startsWith("javax.validation.constraints")
+					.startsWith("javax.validation.constraints") ||
+				annotationDesc.annotationType().qualifiedTypeName()
+					.startsWith("lombok.NonNull") 
 					) {
 				strBuilder.append("@");
 				strBuilder.append(annotationDesc.annotationType().name());

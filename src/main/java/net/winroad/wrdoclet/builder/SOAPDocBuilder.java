@@ -132,7 +132,7 @@ public class SOAPDocBuilder extends AbstractServiceDocBuilder {
 	@Override
 	protected boolean isServiceInterface(ClassDoc classDoc) {
 		return classDoc.isInterface()
-				&& this.isClassDocAnnotatedWith(classDoc, "WebService");
+				&& this.isProgramElementDocAnnotatedWith(classDoc, "javax.jws.WebService");
 	}
 
 	@Override

@@ -330,7 +330,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	 * Controller, although it may not be enough.
 	 */
 	private boolean isController(ClassDoc classDoc) {
-		return this.isClassDocAnnotatedWith(classDoc, "Controller");
+		return this.isProgramElementDocAnnotatedWith(classDoc, "org.springframework.stereotype.Controller");
 	}
 
 	private boolean isAPIClass(ClassDoc classDoc) {

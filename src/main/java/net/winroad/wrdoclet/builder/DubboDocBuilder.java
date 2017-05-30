@@ -47,6 +47,10 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			Configuration configuration) {
 		LinkedList<String> annotationDubboInterfaces = processAnnotationDubboInterfaces(classes);
 		dubboInterfaces.addAll(annotationDubboInterfaces);
+		this.logger.debug("dubbo annotation interface list:");
+		for (String s : annotationDubboInterfaces) {
+			this.logger.debug("interface: " + s);
+		}
 		super.processOpenAPIClasses(classes, configuration);
 	}
 
@@ -54,7 +58,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 		LinkedList<String> result = new LinkedList<String>();
 		for (int i = 0; i < classes.length; i++) {
 			// implementation class which used com.alibaba.dubbo.config.annotation.Service 
-			if(isClassDocAnnotatedWith(classes[i],"Service")) {
+			if(isProgramElementDocAnnotatedWith(classes[i],"com.alibaba.dubbo.config.annotation.Service")) {
 				for(ClassDoc interfaceClassDoc : classes[i].interfaces()) {
 					result.add(interfaceClassDoc.qualifiedName());
 					// mapping the method in interface to the method in implementation class
