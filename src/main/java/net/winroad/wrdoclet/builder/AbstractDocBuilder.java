@@ -510,10 +510,22 @@ public abstract class AbstractDocBuilder {
 				}
 
 				if (StringUtils.isEmpty(param.getDescription())) {
-					param.setDescription(privateFieldDesc.get(param.getName()));
+					String temp = privateFieldDesc.get(param.getName());
+					if (temp == null) {
+						if (typeToProcess.typeName().equals("boolean")) {
+							temp = privateFieldDesc.get(param.getName());
+							if (temp == null) {
+								param.setDescription(privateFieldDesc.get("is" + net.winroad.wrdoclet.utils.Util.capitalize(param.getName())));
+							}
+						} 
+					} else {
+						param.setDescription(temp);
+					}
 				}
 				
-				param.setDescription(param.getDescription() == null ? privateFieldValidator.get(param.getName()) : param.getDescription() + " " + privateFieldValidator.get(param.getName()));
+				if(privateFieldValidator.get(param.getName()) != null) {
+					param.setDescription(param.getDescription() == null ? privateFieldValidator.get(param.getName()) : param.getDescription() + " " + privateFieldValidator.get(param.getName()));
+				}
 
 				param.setParameterOccurs(this.parseParameterOccurs(methodDoc
 						.tags(WROccursTaglet.NAME)));
