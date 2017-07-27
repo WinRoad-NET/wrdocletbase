@@ -1,28 +1,14 @@
 package net.winroad.wrdoclet.builder;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathFactory;
-
+import com.sun.javadoc.*;
+import com.sun.tools.doclets.internal.toolkit.Configuration;
+import com.sun.tools.doclets.internal.toolkit.util.Util;
 import net.winroad.wrdoclet.AbstractConfiguration;
-import net.winroad.wrdoclet.data.APIParameter;
-import net.winroad.wrdoclet.data.ParameterOccurs;
-import net.winroad.wrdoclet.data.ParameterType;
-import net.winroad.wrdoclet.data.RequestMapping;
-import net.winroad.wrdoclet.data.WRDoc;
+import net.winroad.wrdoclet.data.*;
 import net.winroad.wrdoclet.taglets.WRAPITaglet;
-import net.winroad.wrdoclet.taglets.WROccursTaglet;
-import net.winroad.wrdoclet.taglets.WRRefReqTaglet;
 import net.winroad.wrdoclet.taglets.WRRefRespTaglet;
 import net.winroad.wrdoclet.taglets.WRTagTaglet;
 import net.winroad.wrdoclet.utils.UniversalNamespaceCache;
-
 import org.apache.commons.lang.StringUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
@@ -30,15 +16,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.sun.javadoc.AnnotationDesc;
-import com.sun.javadoc.AnnotationDesc.ElementValuePair;
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.MethodDoc;
-import com.sun.javadoc.ParamTag;
-import com.sun.javadoc.Parameter;
-import com.sun.javadoc.Tag;
-import com.sun.tools.doclets.internal.toolkit.Configuration;
-import com.sun.tools.doclets.internal.toolkit.util.Util;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.util.*;
 
 /**
  * @author AdamsLee NOTE: WRDoc cannot cover API which returning objects whose
@@ -49,13 +30,28 @@ import com.sun.tools.doclets.internal.toolkit.util.Util;
  *                       }
  */
 public class RESTDocBuilder extends AbstractDocBuilder {
-
+	//TODO: dubbo支持多协议，如何处理一个服务类同时支持dubbo和http？
 	public RESTDocBuilder(WRDoc wrDoc) {
 		super(wrDoc);
+		try {
+			String dubboconfigpath = ((AbstractConfiguration) wrDoc
+					.getConfiguration()).dubboconfigpath;
+			if(!StringUtils.isBlank(dubboconfigpath)) {
+				protocolMap = DubboDocBuilder.getDubboProtocols(dubboconfigpath);
+			}
+		} catch (Exception e) {
+			this.logger.error(e);
+		}
 	}
 
 	private PathMatcher matcher = new AntPathMatcher();
 	private List<String> excludedUrls;
+	/**
+	 * dubbo配置的协议
+	 * key protocol id, value "dubbo" or "http"
+	 * http://alibaba.github.io/dubbo-doc-static/Configuration+Reference-showChildren=true.htm
+	 */
+	protected HashMap<String, String> protocolMap;
 
 	protected List<String> getExcludedUrls(Configuration configuration) {
 		List<String> excludedUrls = new LinkedList<String>();
@@ -208,6 +204,24 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 					}
 				}
 				break;
+			} else if(annotations[i].annotationType().name().equals("Path")){
+				if(requestMapping == null) {
+					requestMapping = new RequestMapping() ;
+				}
+				for (int j = 0; j < annotations[i].elementValues().length; j++) {
+					if ("value".equals(annotations[i].elementValues()[j]
+							.element().name())) {
+						String url = annotations[i].elementValues()[j].value()
+								.toString().replace("\"", "");
+						requestMapping.setUrl(url);
+					}
+				}
+			} else if(annotations[i].annotationType().name().equals("GET")
+					||annotations[i].annotationType().name().equals("POST")){
+				if(requestMapping == null) {
+					requestMapping = new RequestMapping() ;
+				}
+				requestMapping.setMethodType(annotations[i].annotationType().name());
 			}
 		}
 		return requestMapping;
@@ -243,7 +257,8 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	@Override
 	protected APIParameter getOutputParam(MethodDoc method) {
 		APIParameter apiParameter = null;
-		if (this.isAnnotatedResponseBody(method)) {
+		if (this.isAnnotatedResponseBody(method)
+				|| this.isProgramElementDocAnnotatedWith(method, "javax.ws.rs.Produces")) {
 			apiParameter = new APIParameter();
 			apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
 			apiParameter.setType(this.getTypeName(method.returnType(), false));
@@ -312,8 +327,9 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				}
 				for (int j = 0; j < annotations.length; j++) {
 					processAnnotations(annotations[j], apiParameter);
-					buf.append("@");
-					buf.append(annotations[j].annotationType().name());
+					buf.append(annotations[j].toString().replace(
+							annotations[j].annotationType().qualifiedTypeName(),
+							annotations[j].annotationType().simpleTypeName()));
 					buf.append(" ");
 				}
 				apiParameter.setDescription(buf.toString());
@@ -330,7 +346,25 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	 * Controller, although it may not be enough.
 	 */
 	private boolean isController(ClassDoc classDoc) {
-		return this.isProgramElementDocAnnotatedWith(classDoc, "org.springframework.stereotype.Controller");
+		return this.isProgramElementDocAnnotatedWith(classDoc, "org.springframework.stereotype.Controller") ||
+				this.isRestService(classDoc);
+	}
+
+	protected boolean isRestService(ClassDoc classDoc) {
+		AnnotationDesc[] annotations = classDoc.annotations();
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().qualifiedTypeName().equals("com.alibaba.dubbo.config.annotation.Service")) {
+				AnnotationDesc.ElementValuePair[] elementValuePairs = annotations[i].elementValues();
+				for (AnnotationDesc.ElementValuePair elementValuePair : elementValuePairs) {
+					if("protocol".equals(elementValuePair.element().name())
+							&& "http".equals(protocolMap.get(elementValuePair.value().toString().replace("\"", "")))) {
+						return true;
+					}
+				}
+				return false;
+			}
+		}
+		return false;
 	}
 
 	private boolean isAPIClass(ClassDoc classDoc) {
@@ -373,7 +407,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	}
 
 	/*
-	 * The method has spring "@RequestMapping" or tagged as "api".
+	 * The method has spring "@RequestMapping" or tagged as "api" or resteasy "@Path".
 	 */
 	protected boolean isOpenAPIMethod(MethodDoc methodDoc) {
 		AnnotationDesc[] annotations = methodDoc.annotations();
@@ -385,7 +419,9 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 			}
 		}
 		Tag[] t = methodDoc.tags(WRAPITaglet.NAME);
-		return isActionMethod || t.length > 0;
+		return isActionMethod
+				|| t.length > 0
+				|| this.isProgramElementDocAnnotatedWith(methodDoc, "javax.ws.rs.Path");
 	}
 
 	/*

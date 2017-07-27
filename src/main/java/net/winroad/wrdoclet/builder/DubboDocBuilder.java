@@ -1,12 +1,12 @@
 package net.winroad.wrdoclet.builder;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
+import java.io.IOException;
+import java.util.*;
 
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import net.winroad.wrdoclet.AbstractConfiguration;
@@ -18,6 +18,7 @@ import net.winroad.wrdoclet.data.WRDoc;
 import net.winroad.wrdoclet.utils.LoggerFactory;
 import net.winroad.wrdoclet.utils.UniversalNamespaceCache;
 
+import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -29,17 +30,26 @@ import com.sun.javadoc.ParamTag;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.Tag;
 import com.sun.tools.doclets.internal.toolkit.Configuration;
+import org.xml.sax.SAXException;
 
 public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	protected LinkedList<String> dubboInterfaces = null;
 
 	//methodDoc in interfaces map to methodDoc in implementation classes
 	protected HashMap<MethodDoc, MethodDoc> stubImplMethodMap = new HashMap<>();
-	
+
+	protected HashMap<String, String> protocolMap;
+
 	public DubboDocBuilder(WRDoc wrDoc) {
 		super(wrDoc);
 		this.logger = LoggerFactory.getLogger(this.getClass());
 		dubboInterfaces = this.getDubboInterfaces();
+		try {
+			protocolMap = getDubboProtocols(((AbstractConfiguration) wrDoc
+                    .getConfiguration()).dubboconfigpath);
+		} catch (Exception e) {
+			this.logger.error(e);
+		}
 	}
 	
 	@Override
@@ -58,7 +68,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 		LinkedList<String> result = new LinkedList<String>();
 		for (int i = 0; i < classes.length; i++) {
 			// implementation class which used com.alibaba.dubbo.config.annotation.Service 
-			if(isProgramElementDocAnnotatedWith(classes[i],"com.alibaba.dubbo.config.annotation.Service")) {
+			if(isDubboService(classes[i])) {
 				for(ClassDoc interfaceClassDoc : classes[i].interfaces()) {
 					result.add(interfaceClassDoc.qualifiedName());
 					// mapping the method in interface to the method in implementation class
@@ -79,6 +89,23 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			}
 		}
 		return result;
+	}
+
+	protected boolean isDubboService(ClassDoc classDoc) {
+		AnnotationDesc[] annotations = classDoc.annotations();
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().qualifiedTypeName().equals("com.alibaba.dubbo.config.annotation.Service")) {
+				AnnotationDesc.ElementValuePair[] elementValuePairs = annotations[i].elementValues();
+				for (AnnotationDesc.ElementValuePair elementValuePair : elementValuePairs) {
+					if("protocol".equals(elementValuePair.element().name())
+							&& "http".equals(protocolMap.get(elementValuePair.value().toString().replace("\"", "")))) {
+						return false;
+					}
+				}
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	protected LinkedList<String> getDubboInterfaces() {
@@ -104,6 +131,36 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 		this.logger.debug("dubbo interface list:");
 		for (String s : result) {
 			this.logger.debug("interface: " + s);
+		}
+		return result;
+	}
+
+	/**
+	 * @param dubboConfigFilePath
+	 * @return HashMap, key protocol id, value "dubbo" or "http"
+     */
+	protected static HashMap<String, String> getDubboProtocols(String dubboConfigFilePath) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
+		HashMap<String, String> result = new HashMap<>();
+		Document dubboConfig = readXMLConfig(dubboConfigFilePath);
+		XPath xPath = XPathFactory.newInstance().newXPath();
+		xPath.setNamespaceContext(new UniversalNamespaceCache(dubboConfig,
+				false));
+		NodeList serviceNodes = (NodeList) xPath.evaluate(
+				"//:beans/dubbo:protocol", dubboConfig,
+				XPathConstants.NODESET);
+		for (int i = 0; i < serviceNodes.getLength(); i++) {
+			Node node = serviceNodes.item(i);
+			String id = getAttributeValue(node, "id");
+			String name = getAttributeValue(node, "name");
+			String server = getAttributeValue(node, "server");
+			if(StringUtils.isEmpty(id)) {
+				id = name;
+			}
+			if("servlet".equalsIgnoreCase(server) || "jetty".equalsIgnoreCase(server)) {
+				result.put(id, "http");
+			} else {
+				result.put(id, "dubbo");
+			}
 		}
 		return result;
 	}
@@ -168,8 +225,9 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			}
 			for (int j = 0; j < annotations.length; j++) {
 				processAnnotations(annotations[j], apiParameter);
-				buf.append("@");
-				buf.append(annotations[j].annotationType().name());
+				buf.append(annotations[j].toString().replace(
+						annotations[j].annotationType().qualifiedTypeName(),
+						annotations[j].annotationType().simpleTypeName()));
 				buf.append(" ");
 			}
 			apiParameter.setDescription(buf.toString());
