@@ -34,10 +34,6 @@ import org.xml.sax.SAXException;
 
 public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	protected LinkedList<String> dubboInterfaces = null;
-
-	//methodDoc in interfaces map to methodDoc in implementation classes
-	protected HashMap<MethodDoc, MethodDoc> stubImplMethodMap = new HashMap<>();
-
 	protected HashMap<String, String> protocolMap;
 
 	public DubboDocBuilder(WRDoc wrDoc) {
@@ -75,12 +71,12 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 					for(MethodDoc implMethodDoc : classes[i].methods()) {
 						MethodDoc overriddenMethod = implMethodDoc.overriddenMethod();
 						if(overriddenMethod != null) {
-							stubImplMethodMap.put(overriddenMethod, implMethodDoc);
+							methodMap.put(overriddenMethod, implMethodDoc);
 						} else {
 							//It seems that MethodDoc.overriddenMethod() doesn't work, but MethodDoc.overrides() works fine.
 							for(MethodDoc interfaceMethodDoc : interfaceClassDoc.methods()) {
 								if(implMethodDoc.overrides(interfaceMethodDoc)) {
-									stubImplMethodMap.put(interfaceMethodDoc, implMethodDoc);
+									methodMap.put(interfaceMethodDoc, implMethodDoc);
 								}
 							}
 						}
@@ -199,7 +195,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 		List<APIParameter> paramList = new LinkedList<APIParameter>();
 		paramList.addAll(parseCustomizedParameters(method));
 		Parameter[] parameters = method.parameters();
-		MethodDoc implMethod = stubImplMethodMap.get(method);
+		MethodDoc implMethod = methodMap.get(method);
 		Parameter[] implParams = implMethod == null ? null : implMethod.parameters();
 		for (int i = 0; i < parameters.length; i++) {
 			AnnotationDesc[] annotations = parameters[i].annotations();
@@ -216,11 +212,22 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			apiParameter.setHistory(this
 					.getModificationHistory(parameters[i].type()));
 			StringBuffer buf = new StringBuffer();
+			boolean paramComment = false;
 			for (Tag tag : method.tags("param")) {
 				if (parameters[i].name().equals(
 						((ParamTag) tag).parameterName())) {
+					paramComment = true;
 					buf.append(((ParamTag) tag).parameterComment());
 					buf.append(" ");
+				}
+			}
+			if(!paramComment && this.methodMap.containsKey(method)) {
+				for (Tag tag : this.methodMap.get(method).tags("param")) {
+					if (parameters[i].name().equals(
+							((ParamTag) tag).parameterName())) {
+						buf.append(((ParamTag) tag).parameterComment());
+						buf.append(" ");
+					}
 				}
 			}
 			for (int j = 0; j < annotations.length; j++) {

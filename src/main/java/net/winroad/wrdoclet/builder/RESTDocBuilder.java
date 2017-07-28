@@ -99,6 +99,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	public void processOpenAPIClasses(ClassDoc[] classDocs,
 			Configuration configuration) {
 		this.excludedUrls = this.getExcludedUrls(configuration);
+		processAnnotationDubboInterfaces(classDocs);
 		for (int i = 0; i < classDocs.length; i++) {
 			if (configuration.nodeprecated
 					&& (Util.isDeprecated(classDocs[i]) || Util
@@ -318,11 +319,23 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				apiParameter.setHistory(this
 						.getModificationHistory(parameters[i].type()));
 				StringBuffer buf = new StringBuffer();
+				boolean paramComment = false;
+				//TODO: RESTDocBuilder 和 DubboDocbuilder 需要看看怎么优化。因为dubbo也可以支持rest
 				for (Tag tag : method.tags("param")) {
 					if (parameters[i].name().equals(
 							((ParamTag) tag).parameterName())) {
+						paramComment = true;
 						buf.append(((ParamTag) tag).parameterComment());
 						buf.append(" ");
+					}
+				}
+				if(!paramComment && this.methodMap.containsKey(method)) {
+					for (Tag tag : this.methodMap.get(method).tags("param")) {
+						if (parameters[i].name().equals(
+								((ParamTag) tag).parameterName())) {
+							buf.append(((ParamTag) tag).parameterComment());
+							buf.append(" ");
+						}
 					}
 				}
 				for (int j = 0; j < annotations.length; j++) {
@@ -370,6 +383,27 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	private boolean isAPIClass(ClassDoc classDoc) {
 		Tag[] t = classDoc.tags(WRAPITaglet.NAME);
 		return t.length > 0;
+	}
+
+	protected void processAnnotationDubboInterfaces(ClassDoc[] classes) {
+		for(ClassDoc classDoc:classes) {
+			for(ClassDoc interfaceClassDoc : classDoc.interfaces()) {
+				// mapping the method in implementation class to the method in interface
+				for(MethodDoc implMethodDoc : classDoc.methods()) {
+					MethodDoc overriddenMethod = implMethodDoc.overriddenMethod();
+					if(overriddenMethod != null) {
+						methodMap.put(implMethodDoc, overriddenMethod);
+					} else {
+						//It seems that MethodDoc.overriddenMethod() doesn't work, but MethodDoc.overrides() works fine.
+						for(MethodDoc interfaceMethodDoc : interfaceClassDoc.methods()) {
+							if(implMethodDoc.overrides(interfaceMethodDoc)) {
+								methodMap.put(implMethodDoc, interfaceMethodDoc);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	/*

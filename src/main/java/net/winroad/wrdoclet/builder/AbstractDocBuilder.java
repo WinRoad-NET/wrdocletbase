@@ -80,6 +80,12 @@ public abstract class AbstractDocBuilder {
 		return taggedOpenAPIMethods;
 	}
 
+	/**
+	 * methodDoc in implementation classes map to methodDoc in interfaces or
+	 * methodDoc in interfaces map to methodDoc in implementation classes
+	 */
+	protected HashMap<MethodDoc, MethodDoc> methodMap = new HashMap<>();
+
 	public void setTaggedOpenAPIMethods(
 			Map<String, Set<MethodDoc>> taggedOpenAPIMethods) {
 		this.taggedOpenAPIMethods = taggedOpenAPIMethods;
@@ -168,6 +174,9 @@ public abstract class AbstractDocBuilder {
 						|| Util.isDeprecated(methodDoc.containingClass())
 						|| Util.isDeprecated(methodDoc.containingPackage()));
 				Tag[] tags = this.getTagTaglets(methodDoc);
+				if (tags.length == 0 && this.methodMap.containsKey(methodDoc)) {
+					tags = this.getTagTaglets(this.methodMap.get(methodDoc));
+				}
 				if (tags.length == 0) {
 					openAPI.addTag(methodDoc.containingClass().simpleTypeName());
 				} else {
@@ -178,14 +187,25 @@ public abstract class AbstractDocBuilder {
 				openAPI.setQualifiedName(methodDoc.qualifiedName());
 				if (StringUtils.isNotBlank(methodDoc.commentText())) {
 					openAPI.setDescription(methodDoc.commentText());
+				} else if(this.methodMap.containsKey(methodDoc)) {
+					openAPI.setDescription(this.methodMap.get(methodDoc).commentText());
 				}
+
+				String brief;
 				if (methodDoc.tags(WRBriefTaglet.NAME).length == 0) {
-					openAPI.setBrief(getBriefFromCommentText(methodDoc
-							.commentText()));
+					brief = getBriefFromCommentText(methodDoc.commentText());
 				} else {
-					openAPI.setBrief(methodDoc.tags(WRBriefTaglet.NAME)[0]
-							.text());
+					brief = methodDoc.tags(WRBriefTaglet.NAME)[0].text();
 				}
+				if(StringUtils.isBlank(brief) && this.methodMap.containsKey(methodDoc)) {
+					if (this.methodMap.get(methodDoc).tags(WRBriefTaglet.NAME).length == 0) {
+						brief = getBriefFromCommentText(this.methodMap.get(methodDoc).commentText());
+					} else {
+						brief = this.methodMap.get(methodDoc).tags(WRBriefTaglet.NAME)[0].text();
+					}
+				}
+				openAPI.setBrief(brief);
+
 				openAPI.setModificationHistory(this
 						.getModificationHistory(methodDoc));
 				openAPI.setRequestMapping(this.parseRequestMapping(methodDoc));
