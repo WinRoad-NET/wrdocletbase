@@ -254,12 +254,11 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 						"org.springframework.web.bind.annotation.RequestMethod.",
 						"").replace("{", "").replace("}", "");
 	}
-
+	
 	@Override
 	protected APIParameter getOutputParam(MethodDoc method) {
-		APIParameter apiParameter = null;
-		if (this.isAnnotatedResponseBody(method)
-				|| this.isProgramElementDocAnnotatedWith(method, "javax.ws.rs.Produces")) {
+		APIParameter apiParameter = this.parseCustomizedReturn(method);
+		if (apiParameter == null) {
 			apiParameter = new APIParameter();
 			apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
 			apiParameter.setType(this.getTypeName(method.returnType(), false));
@@ -271,8 +270,6 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 					ParameterType.Response, processingClasses));
 			apiParameter.setHistory(this.getModificationHistory(method
 					.returnType()));
-		} else {
-			apiParameter = this.parseCustomizedReturn(method);
 		}
 
 		apiParameter = handleRefResp(method, apiParameter);
@@ -298,7 +295,18 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 		}
 		return apiParameter;
 	}
-
+	
+	/**
+	 * param which will not be displayed in doc.
+	 */
+	protected boolean isInIgnoreParamList(Parameter param) {
+		return "javax.servlet.http.HttpServletRequest".equals(param.name())
+				|| "javax.servlet.http.HttpSession".equals(param.name())
+				|| "org.springframework.web.context.request.WebRequest".equals(param.name())
+				|| "java.io.OutputStream".equals(param.name())
+				|| "org.springframework.http.HttpEntity<java.lang.String>".equals(param.name());
+	}
+	
 	// TODO: handle the @RequestHeader、@CookieValue, @RequestParam,
 	// @SessionAttributes, @ModelAttribute
 	@Override
@@ -307,47 +315,48 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 		paramList.addAll(parseCustomizedParameters(method));
 		Parameter[] parameters = method.parameters();
 		for (int i = 0; i < parameters.length; i++) {
+			if(this.isInIgnoreParamList(parameters[i])) {
+				continue;
+			}
 			AnnotationDesc[] annotations = parameters[i].annotations();
-			APIParameter apiParameter = new APIParameter();
-			if (annotations.length > 0) {
-				apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
-				apiParameter.setType(this.getTypeName(parameters[i].type(), false));
-				apiParameter.setName(parameters[i].name());
-				HashSet<String> processingClasses = new HashSet<String>();
-				apiParameter.setFields(this.getFields(parameters[i].type(),
-						ParameterType.Request, processingClasses));
-				apiParameter.setHistory(this
-						.getModificationHistory(parameters[i].type()));
-				StringBuffer buf = new StringBuffer();
-				boolean paramComment = false;
-				//TODO: RESTDocBuilder 和 DubboDocbuilder 需要看看怎么优化。因为dubbo也可以支持rest
-				for (Tag tag : method.tags("param")) {
+			APIParameter apiParameter = new APIParameter();			
+			apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
+			apiParameter.setType(this.getTypeName(parameters[i].type(), false));
+			apiParameter.setName(parameters[i].name());
+			HashSet<String> processingClasses = new HashSet<String>();
+			apiParameter.setFields(this.getFields(parameters[i].type(),
+					ParameterType.Request, processingClasses));
+			apiParameter.setHistory(this
+					.getModificationHistory(parameters[i].type()));
+			StringBuffer buf = new StringBuffer();
+			boolean paramComment = false;
+			//TODO: RESTDocBuilder 和 DubboDocbuilder 需要看看怎么优化。因为dubbo也可以支持rest
+			for (Tag tag : method.tags("param")) {
+				if (parameters[i].name().equals(
+						((ParamTag) tag).parameterName())) {
+					paramComment = true;
+					buf.append(((ParamTag) tag).parameterComment());
+					buf.append(" ");
+				}
+			}
+			if(!paramComment && this.methodMap.containsKey(method)) {
+				for (Tag tag : this.methodMap.get(method).tags("param")) {
 					if (parameters[i].name().equals(
 							((ParamTag) tag).parameterName())) {
-						paramComment = true;
 						buf.append(((ParamTag) tag).parameterComment());
 						buf.append(" ");
 					}
 				}
-				if(!paramComment && this.methodMap.containsKey(method)) {
-					for (Tag tag : this.methodMap.get(method).tags("param")) {
-						if (parameters[i].name().equals(
-								((ParamTag) tag).parameterName())) {
-							buf.append(((ParamTag) tag).parameterComment());
-							buf.append(" ");
-						}
-					}
-				}
-				for (int j = 0; j < annotations.length; j++) {
-					processAnnotations(annotations[j], apiParameter);
-					buf.append(annotations[j].toString().replace(
-							annotations[j].annotationType().qualifiedTypeName(),
-							annotations[j].annotationType().simpleTypeName()));
-					buf.append(" ");
-				}
-				apiParameter.setDescription(buf.toString());
-				paramList.add(apiParameter);
 			}
+			for (int j = 0; j < annotations.length; j++) {
+				processAnnotations(annotations[j], apiParameter);
+				buf.append(annotations[j].toString().replace(
+						annotations[j].annotationType().qualifiedTypeName(),
+						annotations[j].annotationType().simpleTypeName()));
+				buf.append(" ");
+			}
+			apiParameter.setDescription(buf.toString());
+			paramList.add(apiParameter);
 		}
 
 		handleRefReq(method, paramList);
