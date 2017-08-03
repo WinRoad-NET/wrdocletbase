@@ -205,7 +205,23 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 					}
 				}
 				break;
-			} else if(annotations[i].annotationType().name().equals("Path")){
+			} else if (annotations[i].annotationType().name().equals("PostMapping")
+					|| annotations[i].annotationType().name().equals("GetMapping")
+					|| annotations[i].annotationType().name().equals("DeleteMapping")
+					|| annotations[i].annotationType().name().equals("PutMapping")
+					|| annotations[i].annotationType().name().equals("PatchMapping")) {
+				requestMapping = new RequestMapping();
+				for (int j = 0; j < annotations[i].elementValues().length; j++) {
+					if ("value".equals(annotations[i].elementValues()[j]
+							.element().name())) {
+						String url = annotations[i].elementValues()[j].value()
+								.toString().replace("\"", "");
+						requestMapping.setUrl(url);
+						requestMapping.setMethodType(annotations[i].annotationType().name().replace("Mapping","").toUpperCase());
+					}
+				}
+				break;
+			}else if(annotations[i].annotationType().name().equals("Path")){
 				if(requestMapping == null) {
 					requestMapping = new RequestMapping() ;
 				}
@@ -367,6 +383,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	 */
 	private boolean isController(ClassDoc classDoc) {
 		return this.isProgramElementDocAnnotatedWith(classDoc, "org.springframework.stereotype.Controller") ||
+				this.isProgramElementDocAnnotatedWith(classDoc, "org.springframework.web.bind.annotation.RestController") ||
 				this.isRestService(classDoc);
 	}
 
@@ -454,7 +471,12 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 		AnnotationDesc[] annotations = methodDoc.annotations();
 		boolean isActionMethod = false;
 		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().name().equals("RequestMapping")) {
+			if (annotations[i].annotationType().name().equals("RequestMapping")
+					|| annotations[i].annotationType().name().equals("PostMapping")
+					|| annotations[i].annotationType().name().equals("GetMapping")
+					|| annotations[i].annotationType().name().equals("DeleteMapping")
+					|| annotations[i].annotationType().name().equals("PutMapping")
+					|| annotations[i].annotationType().name().equals("PatchMapping") ) {
 				isActionMethod = true;
 				break;
 			}
