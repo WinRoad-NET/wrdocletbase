@@ -458,9 +458,10 @@ public abstract class AbstractDocBuilder {
 		HashMap<String, String> privateFieldValidator = new HashMap<>();
 		HashMap<String, String> privateFieldDesc = new HashMap<String, String>();
 		HashMap<String, String> privateJsonField = new HashMap<String, String>();
-		
+		Set<String> transientFieldSet = new HashSet<>();
+
 		for (FieldDoc fieldDoc : fieldDocs) {
-			if (!fieldDoc.isStatic() && (fieldDoc.isPublic() || isLomBokClass ||
+			if ( !fieldDoc.isTransient() && !fieldDoc.isStatic() && (fieldDoc.isPublic() || isLomBokClass ||
 					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Getter") && paramType == ParameterType.Response) ||
 					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Setter") && paramType == ParameterType.Request))) {
 				APIParameter param = new APIParameter();
@@ -484,11 +485,17 @@ public abstract class AbstractDocBuilder {
 					privateJsonField.put(fieldDoc.name(), jsonField);
 				}
 				privateFieldValidator.put(fieldDoc.name(), this.getFieldValidatorDesc(fieldDoc));
+				if(fieldDoc.isTransient()) {
+					transientFieldSet.add(fieldDoc.name());
+				}
 			}
 		}
 
 		MethodDoc[] methodDocs = classDoc.methods(false);
 		for (MethodDoc methodDoc : methodDocs) {
+			if(transientFieldSet.contains(this.getFieldNameOfAccesser(methodDoc.name()))) {
+				continue;
+			}
 			if ((paramType == ParameterType.Response && this
 					.isGetterMethod(methodDoc))
 					|| (paramType == ParameterType.Request && this
