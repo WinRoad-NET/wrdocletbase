@@ -107,19 +107,23 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	protected LinkedList<String> getDubboInterfaces() {
 		LinkedList<String> result = new LinkedList<String>();
 		try {
-			Document dubboConfig = readXMLConfig(((AbstractConfiguration) this.wrDoc
-					.getConfiguration()).dubboconfigpath);
-			XPath xPath = XPathFactory.newInstance().newXPath();
-			xPath.setNamespaceContext(new UniversalNamespaceCache(dubboConfig,
-					false));
-			NodeList serviceNodes = (NodeList) xPath.evaluate(
-					"//:beans/dubbo:service", dubboConfig,
-					XPathConstants.NODESET);
-			for (int i = 0; i < serviceNodes.getLength(); i++) {
-				Node node = serviceNodes.item(i);
-				String ifc = getAttributeValue(node, "interface");
-				if (ifc != null)
-					result.add(ifc);
+			String filePath = ((AbstractConfiguration) this.wrDoc
+					.getConfiguration()).dubboconfigpath;
+			if(!StringUtils.isEmpty(filePath)) {
+				Document dubboConfig = readXMLConfig(((AbstractConfiguration) this.wrDoc
+						.getConfiguration()).dubboconfigpath);
+				XPath xPath = XPathFactory.newInstance().newXPath();
+				xPath.setNamespaceContext(new UniversalNamespaceCache(dubboConfig,
+						false));
+				NodeList serviceNodes = (NodeList) xPath.evaluate(
+						"//:beans/dubbo:service", dubboConfig,
+						XPathConstants.NODESET);
+				for (int i = 0; i < serviceNodes.getLength(); i++) {
+					Node node = serviceNodes.item(i);
+					String ifc = getAttributeValue(node, "interface");
+					if (ifc != null)
+						result.add(ifc);
+				}
 			}
 		} catch (Exception e) {
 			this.logger.error(e);
@@ -137,25 +141,27 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
      */
 	protected static HashMap<String, String> getDubboProtocols(String dubboConfigFilePath) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException {
 		HashMap<String, String> result = new HashMap<>();
-		Document dubboConfig = readXMLConfig(dubboConfigFilePath);
-		XPath xPath = XPathFactory.newInstance().newXPath();
-		xPath.setNamespaceContext(new UniversalNamespaceCache(dubboConfig,
-				false));
-		NodeList serviceNodes = (NodeList) xPath.evaluate(
-				"//:beans/dubbo:protocol", dubboConfig,
-				XPathConstants.NODESET);
-		for (int i = 0; i < serviceNodes.getLength(); i++) {
-			Node node = serviceNodes.item(i);
-			String id = getAttributeValue(node, "id");
-			String name = getAttributeValue(node, "name");
-			String server = getAttributeValue(node, "server");
-			if(StringUtils.isEmpty(id)) {
-				id = name;
-			}
-			if("servlet".equalsIgnoreCase(server) || "jetty".equalsIgnoreCase(server)) {
-				result.put(id, "http");
-			} else {
-				result.put(id, "dubbo");
+		if(!StringUtils.isEmpty(dubboConfigFilePath)) {
+			Document dubboConfig = readXMLConfig(dubboConfigFilePath);
+			XPath xPath = XPathFactory.newInstance().newXPath();
+			xPath.setNamespaceContext(new UniversalNamespaceCache(dubboConfig,
+					false));
+			NodeList serviceNodes = (NodeList) xPath.evaluate(
+					"//:beans/dubbo:protocol", dubboConfig,
+					XPathConstants.NODESET);
+			for (int i = 0; i < serviceNodes.getLength(); i++) {
+				Node node = serviceNodes.item(i);
+				String id = getAttributeValue(node, "id");
+				String name = getAttributeValue(node, "name");
+				String server = getAttributeValue(node, "server");
+				if(StringUtils.isEmpty(id)) {
+					id = name;
+				}
+				if("servlet".equalsIgnoreCase(server) || "jetty".equalsIgnoreCase(server)) {
+					result.put(id, "http");
+				} else {
+					result.put(id, "dubbo");
+				}
 			}
 		}
 		return result;
@@ -256,6 +262,24 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 	protected int isAPIAuthNeeded(String url) {
 		//no authentication
 		return -1;
+	}
+
+	@Override
+	protected RequestMapping parseRequestMapping(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getOutputParam(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getInputParams(ClassDoc classDoc) {
+		// not needed
+		return null;
 	}
 
 }

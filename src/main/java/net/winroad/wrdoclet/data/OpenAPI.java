@@ -69,7 +69,10 @@ public class OpenAPI {
 	}
 
 	public boolean addInParameter(APIParameter inParameter) {
-		return this.inParameters.add(inParameter);
+		if(inParameter != null) {
+			return this.inParameters.add(inParameter);
+		}
+		return false;
 	}
 
 	public boolean addInParameters(List<APIParameter> inParameters) {

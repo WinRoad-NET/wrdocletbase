@@ -25,6 +25,8 @@ import net.winroad.wrdoclet.data.RequestMapping;
 import net.winroad.wrdoclet.data.WRDoc;
 import net.winroad.wrdoclet.taglets.WRBriefTaglet;
 import net.winroad.wrdoclet.taglets.WRMemoTaglet;
+import net.winroad.wrdoclet.taglets.WRMqConsumerTaglet;
+import net.winroad.wrdoclet.taglets.WRMqProducerTaglet;
 import net.winroad.wrdoclet.taglets.WROccursTaglet;
 import net.winroad.wrdoclet.taglets.WRParamTaglet;
 import net.winroad.wrdoclet.taglets.WRRefReqTaglet;
@@ -63,6 +65,8 @@ public abstract class AbstractDocBuilder {
 
 	protected Map<String, Set<MethodDoc>> taggedOpenAPIMethods = new HashMap<String, Set<MethodDoc>>();
 
+	protected Map<String, Set<ClassDoc>> taggedOpenAPIClasses = new HashMap<String, Set<ClassDoc>>();
+
 	public AbstractDocBuilder(WRDoc wrDoc) {
 		this.wrDoc = wrDoc;
 		this.logger = LoggerFactory.getLogger(this.getClass());
@@ -96,6 +100,7 @@ public abstract class AbstractDocBuilder {
 				this.wrDoc.getConfiguration().root.classes(),
 				this.wrDoc.getConfiguration());
 		this.buildOpenAPIs(this.wrDoc.getConfiguration());
+		this.buildOpenAPIByClasses(this.wrDoc.getConfiguration());
 	}
 
 	protected abstract void processOpenAPIClasses(ClassDoc[] classDocs,
@@ -154,6 +159,60 @@ public abstract class AbstractDocBuilder {
 		return commentText;
 	}
 
+	protected void buildOpenAPIByClasses(Configuration configuration) {
+		Set<Entry<String, Set<ClassDoc>>> classes = this.taggedOpenAPIClasses
+				.entrySet();
+		for (Iterator<Entry<String, Set<ClassDoc>>> tagClsIter = classes
+				.iterator(); tagClsIter.hasNext();) {
+			Entry<String, Set<ClassDoc>> kv = tagClsIter.next();
+			String tagName = kv.getKey();
+			if (!this.wrDoc.getTaggedOpenAPIs().containsKey(tagName)) {
+				this.wrDoc.getTaggedOpenAPIs().put(tagName,
+						new LinkedList<OpenAPI>());
+			}
+			Set<ClassDoc> classDocSet = kv.getValue();
+			for (Iterator<ClassDoc> clsIter = classDocSet.iterator(); clsIter
+					.hasNext();) {
+				ClassDoc classDoc = clsIter.next();
+				OpenAPI openAPI = new OpenAPI();
+				openAPI.setDeprecated(Util.isDeprecated(classDoc)
+						|| Util.isDeprecated(classDoc.containingPackage()));
+				Tag[] tags = classDoc.tags(WRTagTaglet.NAME);
+				if (tags.length == 0) {
+					openAPI.addTag(tagName);
+				} else {
+					for (Tag t : tags) {
+						openAPI.addTags(WRTagTaglet.getTagSet(t.text()));
+					}
+				}
+				openAPI.setQualifiedName(classDoc.qualifiedName());
+				if (StringUtils.isNotBlank(classDoc.commentText())) {
+					openAPI.setDescription(classDoc.commentText());
+				}
+
+				String brief;
+				if (classDoc.tags(WRBriefTaglet.NAME).length == 0) {
+					brief = getBriefFromCommentText(classDoc.commentText());
+				} else {
+					brief = classDoc.tags(WRBriefTaglet.NAME)[0].text();
+				}
+
+				openAPI.setBrief(brief);
+				if(StringUtils.isBlank(openAPI.getDescription())) {
+					openAPI.setDescription(openAPI.getBrief());
+				}
+
+				openAPI.setModificationHistory(this
+						.getModificationHistory(classDoc));
+				openAPI.setRequestMapping(this.parseRequestMapping(classDoc));
+				openAPI.addInParameter(this.getInputParams(classDoc));
+				openAPI.setOutParameter(this.getOutputParam(classDoc));
+				this.wrDoc.getTaggedOpenAPIs().get(tagName).add(openAPI);
+			}
+		}
+		
+	}
+	
 	protected void buildOpenAPIs(Configuration configuration) {
 		Set<Entry<String, Set<MethodDoc>>> methods = this.taggedOpenAPIMethods
 				.entrySet();
@@ -235,9 +294,15 @@ public abstract class AbstractDocBuilder {
 
 	protected abstract RequestMapping parseRequestMapping(MethodDoc methodDoc);
 
+	protected abstract RequestMapping parseRequestMapping(ClassDoc classDoc);
+
 	protected abstract APIParameter getOutputParam(MethodDoc methodDoc);
 
+	protected abstract APIParameter getOutputParam(ClassDoc classDoc);
+	
 	protected abstract List<APIParameter> getInputParams(MethodDoc methodDoc);
+	
+	protected abstract APIParameter getInputParams(ClassDoc classDoc);
 
 	protected String getParamComment(MethodDoc method, String paramName) {
 		ParamTag[] paramTags = method.paramTags();
@@ -260,6 +325,16 @@ public abstract class AbstractDocBuilder {
 		return false;
 	}
 
+	protected ModificationHistory getModificationHistory(ClassDoc classDoc) {
+		ModificationHistory history = new ModificationHistory();
+		if (classDoc != null) {
+			LinkedList<ModificationRecord> list = this
+					.getModificationRecords(classDoc);
+			history.addModificationRecords(list);
+		}
+		return history;		
+	}
+	
 	/*
 	 * get the modification history of the class.
 	 */
@@ -359,7 +434,23 @@ public abstract class AbstractDocBuilder {
 		Tag[] tags = methodDoc.tags(WRReturnCodeTaglet.NAME);
 		return WRReturnCodeTaglet.concat(tags);
 	}
+	
+	protected String getMQConsumerTopic(ClassDoc classDoc) {
+		Tag[] tags = classDoc.tags(WRMqConsumerTaglet.NAME);
+		if(tags.length == 0) {
+			return "";
+		}
+		return tags[0].text();
+	}
 
+	protected String getMQProducerTopic(ClassDoc classDoc) {
+		Tag[] tags = classDoc.tags(WRMqProducerTaglet.NAME);
+		if(tags.length == 0) {
+			return "";
+		}
+		return tags[0].text();
+	}	
+	
 	protected boolean isInStopClasses(ClassDoc classDoc) {
 		String property = ApplicationContextConfig.getStopClasses();
 		if (property != null) {

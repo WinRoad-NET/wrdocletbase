@@ -140,4 +140,22 @@ public class SOAPDocBuilder extends AbstractServiceDocBuilder {
 		//no authentication
 		return -1;
 	}
+
+	@Override
+	protected RequestMapping parseRequestMapping(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getOutputParam(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getInputParams(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
 }

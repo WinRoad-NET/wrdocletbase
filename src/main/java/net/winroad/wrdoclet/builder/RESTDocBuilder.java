@@ -3,12 +3,14 @@ package net.winroad.wrdoclet.builder;
 import com.sun.javadoc.*;
 import com.sun.tools.doclets.internal.toolkit.Configuration;
 import com.sun.tools.doclets.internal.toolkit.util.Util;
+
 import net.winroad.wrdoclet.AbstractConfiguration;
 import net.winroad.wrdoclet.data.*;
 import net.winroad.wrdoclet.taglets.WRAPITaglet;
 import net.winroad.wrdoclet.taglets.WRRefRespTaglet;
 import net.winroad.wrdoclet.taglets.WRTagTaglet;
 import net.winroad.wrdoclet.utils.UniversalNamespaceCache;
+
 import org.apache.commons.lang.StringUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
@@ -19,6 +21,7 @@ import org.w3c.dom.NodeList;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
+
 import java.util.*;
 
 /**
@@ -518,6 +521,24 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 			}
 		}
 		return -1;
+	}
+
+	@Override
+	protected RequestMapping parseRequestMapping(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getOutputParam(ClassDoc classDoc) {
+		// not needed
+		return null;
+	}
+
+	@Override
+	protected APIParameter getInputParams(ClassDoc classDoc) {
+		// not needed
+		return null;
 	}
 
 }
