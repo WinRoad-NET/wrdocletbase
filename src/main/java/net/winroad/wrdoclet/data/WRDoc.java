@@ -60,10 +60,8 @@ public class WRDoc {
 		this.builders.add(new SOAPDocBuilder(this));
 		this.logger.debug("SOAPDocBuilder loaded.");
 		String dubboConfigPath = ((AbstractConfiguration) this.configuration).dubboconfigpath;
-		if (dubboConfigPath != null && !dubboConfigPath.isEmpty()) {
-			this.builders.add(new DubboDocBuilder(this));
-			this.logger.debug("DubboDocBuilder loaded with config path:" + dubboConfigPath);
-		}
+		this.builders.add(new DubboDocBuilder(this));
+		this.logger.debug("DubboDocBuilder loaded with config path:" + dubboConfigPath);
 		this.build();
 	}
 

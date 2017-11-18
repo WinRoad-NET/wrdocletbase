@@ -205,6 +205,9 @@ public abstract class AbstractDocBuilder {
 					}
 				}
 				openAPI.setBrief(brief);
+				if(StringUtils.isBlank(openAPI.getDescription())) {
+					openAPI.setDescription(openAPI.getBrief());
+				}
 
 				openAPI.setModificationHistory(this
 						.getModificationHistory(methodDoc));
