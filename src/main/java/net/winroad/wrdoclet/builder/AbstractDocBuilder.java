@@ -440,7 +440,7 @@ public abstract class AbstractDocBuilder {
 		if(tags.length == 0) {
 			return "";
 		}
-		return tags[0].text();
+		return StringUtils.substringBefore(tags[0].text(), "\n");
 	}
 
 	protected String getMQProducerTopic(ClassDoc classDoc) {
@@ -448,7 +448,7 @@ public abstract class AbstractDocBuilder {
 		if(tags.length == 0) {
 			return "";
 		}
-		return tags[0].text();
+		return StringUtils.substringBefore(tags[0].text(), "\n");
 	}	
 	
 	protected boolean isInStopClasses(ClassDoc classDoc) {
