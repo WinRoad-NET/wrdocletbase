@@ -2,6 +2,7 @@ package net.winroad.wrdoclet.builder;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -595,7 +596,8 @@ public abstract class AbstractDocBuilder {
 					|| (paramType == ParameterType.Request && this
 							.isSetterMethod(methodDoc))) {
 				APIParameter param = new APIParameter();
-				param.setName(this.getFieldNameOfAccesser(methodDoc.name()));
+				String fieldNameOfAccesser = this.getFieldNameOfAccesser(methodDoc.name());
+				param.setName(fieldNameOfAccesser);
 				String jsonField = this.getJsonField(methodDoc);
 				if(jsonField != null) {
 					param.setName(jsonField);
@@ -644,8 +646,8 @@ public abstract class AbstractDocBuilder {
 					}
 				}
 				
-				if(privateFieldValidator.get(param.getName()) != null) {
-					param.setDescription(param.getDescription() == null ? privateFieldValidator.get(param.getName()) : param.getDescription() + " " + privateFieldValidator.get(param.getName()));
+				if(privateFieldValidator.get(fieldNameOfAccesser) != null) {
+					param.setDescription(param.getDescription() == null ? privateFieldValidator.get(fieldNameOfAccesser) : param.getDescription() + " " + privateFieldValidator.get(fieldNameOfAccesser));
 				}
 
 				param.setParameterOccurs(this.parseParameterOccurs(methodDoc
@@ -715,7 +717,7 @@ public abstract class AbstractDocBuilder {
 						}
 						strBuilder.append(elementValuePair.element().name());
 						strBuilder.append("=");
-						strBuilder.append(elementValuePair.value());
+						strBuilder.append(net.winroad.wrdoclet.utils.Util.decodeUnicode(elementValuePair.value().toString()));
 						isFirstElement = false;
 					}
 					strBuilder.append(")");
