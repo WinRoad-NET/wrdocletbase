@@ -54,7 +54,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	 * key protocol id, value "dubbo" or "http"
 	 * http://alibaba.github.io/dubbo-doc-static/Configuration+Reference-showChildren=true.htm
 	 */
-	protected HashMap<String, String> protocolMap;
+	protected HashMap<String, String> protocolMap = new HashMap<>();
 
 	protected List<String> getExcludedUrls(Configuration configuration) {
 		List<String> excludedUrls = new LinkedList<String>();
