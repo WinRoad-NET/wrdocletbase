@@ -727,7 +727,7 @@ public abstract class AbstractDocBuilder {
 			}
 		}
 
-		return typeToProcess.qualifiedTypeName();
+		return typeToProcess.toString();
 	}
 
 	/*
