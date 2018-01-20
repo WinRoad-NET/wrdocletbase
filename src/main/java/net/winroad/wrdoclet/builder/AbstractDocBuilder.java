@@ -91,31 +91,25 @@ public abstract class AbstractDocBuilder {
 	 */
 	protected HashMap<MethodDoc, MethodDoc> methodMap = new HashMap<>();
 
-	public void setTaggedOpenAPIMethods(
-			Map<String, Set<MethodDoc>> taggedOpenAPIMethods) {
+	public void setTaggedOpenAPIMethods(Map<String, Set<MethodDoc>> taggedOpenAPIMethods) {
 		this.taggedOpenAPIMethods = taggedOpenAPIMethods;
 	}
 
 	public void buildWRDoc() {
-		this.processOpenAPIClasses(
-				this.wrDoc.getConfiguration().root.classes(),
-				this.wrDoc.getConfiguration());
+		this.processOpenAPIClasses(this.wrDoc.getConfiguration().root.classes(), this.wrDoc.getConfiguration());
 		this.buildOpenAPIs(this.wrDoc.getConfiguration());
 		this.buildOpenAPIByClasses(this.wrDoc.getConfiguration());
 	}
 
-	protected abstract void processOpenAPIClasses(ClassDoc[] classDocs,
-			Configuration configuration);
+	protected abstract void processOpenAPIClasses(ClassDoc[] classDocs, Configuration configuration);
 
 	protected Tag[] getTagTaglets(MethodDoc methodDoc) {
 		return (Tag[]) ArrayUtils.addAll(methodDoc.tags(WRTagTaglet.NAME),
 				methodDoc.containingClass().tags(WRTagTaglet.NAME));
 	}
 
-	protected void processOpenAPIMethod(MethodDoc methodDoc,
-			Configuration configuration) {
-		if ((configuration.nodeprecated && Util.isDeprecated(methodDoc))
-				|| !isOpenAPIMethod(methodDoc)) {
+	protected void processOpenAPIMethod(MethodDoc methodDoc, Configuration configuration) {
+		if ((configuration.nodeprecated && Util.isDeprecated(methodDoc)) || !isOpenAPIMethod(methodDoc)) {
 			return;
 		}
 
@@ -129,15 +123,12 @@ public abstract class AbstractDocBuilder {
 			this.taggedOpenAPIMethods.get(tag).add(methodDoc);
 		} else {
 			for (int i = 0; i < methodTagArray.length; i++) {
-				Set<String> methodTags = WRTagTaglet
-						.getTagSet(methodTagArray[i].text());
+				Set<String> methodTags = WRTagTaglet.getTagSet(methodTagArray[i].text());
 				this.wrDoc.getWRTags().addAll(methodTags);
-				for (Iterator<String> iter = methodTags.iterator(); iter
-						.hasNext();) {
+				for (Iterator<String> iter = methodTags.iterator(); iter.hasNext();) {
 					String tag = iter.next();
 					if (!this.taggedOpenAPIMethods.containsKey(tag)) {
-						this.taggedOpenAPIMethods.put(tag,
-								new HashSet<MethodDoc>());
+						this.taggedOpenAPIMethods.put(tag, new HashSet<MethodDoc>());
 					}
 					this.taggedOpenAPIMethods.get(tag).add(methodDoc);
 				}
@@ -161,23 +152,18 @@ public abstract class AbstractDocBuilder {
 	}
 
 	protected void buildOpenAPIByClasses(Configuration configuration) {
-		Set<Entry<String, Set<ClassDoc>>> classes = this.taggedOpenAPIClasses
-				.entrySet();
-		for (Iterator<Entry<String, Set<ClassDoc>>> tagClsIter = classes
-				.iterator(); tagClsIter.hasNext();) {
+		Set<Entry<String, Set<ClassDoc>>> classes = this.taggedOpenAPIClasses.entrySet();
+		for (Iterator<Entry<String, Set<ClassDoc>>> tagClsIter = classes.iterator(); tagClsIter.hasNext();) {
 			Entry<String, Set<ClassDoc>> kv = tagClsIter.next();
 			String tagName = kv.getKey();
 			if (!this.wrDoc.getTaggedOpenAPIs().containsKey(tagName)) {
-				this.wrDoc.getTaggedOpenAPIs().put(tagName,
-						new LinkedList<OpenAPI>());
+				this.wrDoc.getTaggedOpenAPIs().put(tagName, new LinkedList<OpenAPI>());
 			}
 			Set<ClassDoc> classDocSet = kv.getValue();
-			for (Iterator<ClassDoc> clsIter = classDocSet.iterator(); clsIter
-					.hasNext();) {
+			for (Iterator<ClassDoc> clsIter = classDocSet.iterator(); clsIter.hasNext();) {
 				ClassDoc classDoc = clsIter.next();
 				OpenAPI openAPI = new OpenAPI();
-				openAPI.setDeprecated(Util.isDeprecated(classDoc)
-						|| Util.isDeprecated(classDoc.containingPackage()));
+				openAPI.setDeprecated(Util.isDeprecated(classDoc) || Util.isDeprecated(classDoc.containingPackage()));
 				Tag[] tags = classDoc.tags(WRTagTaglet.NAME);
 				if (tags.length == 0) {
 					openAPI.addTag(tagName);
@@ -199,39 +185,33 @@ public abstract class AbstractDocBuilder {
 				}
 
 				openAPI.setBrief(brief);
-				if(StringUtils.isBlank(openAPI.getDescription())) {
+				if (StringUtils.isBlank(openAPI.getDescription())) {
 					openAPI.setDescription(openAPI.getBrief());
 				}
 
-				openAPI.setModificationHistory(this
-						.getModificationHistory(classDoc));
+				openAPI.setModificationHistory(this.getModificationHistory(classDoc));
 				openAPI.setRequestMapping(this.parseRequestMapping(classDoc));
 				openAPI.addInParameter(this.getInputParams(classDoc));
 				openAPI.setOutParameter(this.getOutputParam(classDoc));
 				this.wrDoc.getTaggedOpenAPIs().get(tagName).add(openAPI);
 			}
 		}
-		
+
 	}
-	
+
 	protected void buildOpenAPIs(Configuration configuration) {
-		Set<Entry<String, Set<MethodDoc>>> methods = this.taggedOpenAPIMethods
-				.entrySet();
-		for (Iterator<Entry<String, Set<MethodDoc>>> tagMthIter = methods
-				.iterator(); tagMthIter.hasNext();) {
+		Set<Entry<String, Set<MethodDoc>>> methods = this.taggedOpenAPIMethods.entrySet();
+		for (Iterator<Entry<String, Set<MethodDoc>>> tagMthIter = methods.iterator(); tagMthIter.hasNext();) {
 			Entry<String, Set<MethodDoc>> kv = tagMthIter.next();
 			String tagName = kv.getKey();
 			if (!this.wrDoc.getTaggedOpenAPIs().containsKey(tagName)) {
-				this.wrDoc.getTaggedOpenAPIs().put(tagName,
-						new LinkedList<OpenAPI>());
+				this.wrDoc.getTaggedOpenAPIs().put(tagName, new LinkedList<OpenAPI>());
 			}
 			Set<MethodDoc> methodDocSet = kv.getValue();
-			for (Iterator<MethodDoc> mthIter = methodDocSet.iterator(); mthIter
-					.hasNext();) {
+			for (Iterator<MethodDoc> mthIter = methodDocSet.iterator(); mthIter.hasNext();) {
 				MethodDoc methodDoc = mthIter.next();
 				OpenAPI openAPI = new OpenAPI();
-				openAPI.setDeprecated(Util.isDeprecated(methodDoc)
-						|| Util.isDeprecated(methodDoc.containingClass())
+				openAPI.setDeprecated(Util.isDeprecated(methodDoc) || Util.isDeprecated(methodDoc.containingClass())
 						|| Util.isDeprecated(methodDoc.containingPackage()));
 				Tag[] tags = this.getTagTaglets(methodDoc);
 				if (tags.length == 0 && this.methodMap.containsKey(methodDoc)) {
@@ -247,7 +227,7 @@ public abstract class AbstractDocBuilder {
 				openAPI.setQualifiedName(methodDoc.qualifiedName());
 				if (StringUtils.isNotBlank(methodDoc.commentText())) {
 					openAPI.setDescription(methodDoc.commentText());
-				} else if(this.methodMap.containsKey(methodDoc)) {
+				} else if (this.methodMap.containsKey(methodDoc)) {
 					openAPI.setDescription(this.methodMap.get(methodDoc).commentText());
 				}
 
@@ -257,7 +237,7 @@ public abstract class AbstractDocBuilder {
 				} else {
 					brief = methodDoc.tags(WRBriefTaglet.NAME)[0].text();
 				}
-				if(StringUtils.isBlank(brief) && this.methodMap.containsKey(methodDoc)) {
+				if (StringUtils.isBlank(brief) && this.methodMap.containsKey(methodDoc)) {
 					if (this.methodMap.get(methodDoc).tags(WRBriefTaglet.NAME).length == 0) {
 						brief = getBriefFromCommentText(this.methodMap.get(methodDoc).commentText());
 					} else {
@@ -265,16 +245,14 @@ public abstract class AbstractDocBuilder {
 					}
 				}
 				openAPI.setBrief(brief);
-				if(StringUtils.isBlank(openAPI.getDescription())) {
+				if (StringUtils.isBlank(openAPI.getDescription())) {
 					openAPI.setDescription(openAPI.getBrief());
 				}
 
-				openAPI.setModificationHistory(this
-						.getModificationHistory(methodDoc));
+				openAPI.setModificationHistory(this.getModificationHistory(methodDoc));
 				openAPI.setRequestMapping(this.parseRequestMapping(methodDoc));
 				if (openAPI.getRequestMapping() != null) {
-					openAPI.setAuthNeeded(this.isAPIAuthNeeded(openAPI
-							.getRequestMapping().getUrl()));
+					openAPI.setAuthNeeded(this.isAPIAuthNeeded(openAPI.getRequestMapping().getUrl()));
 				}
 				openAPI.addInParameters(this.getInputParams(methodDoc));
 				openAPI.setOutParameter(this.getOutputParam(methodDoc));
@@ -285,9 +263,10 @@ public abstract class AbstractDocBuilder {
 	}
 
 	/**
-	 * @param url url of API.
-	 * @return 0 for anonymous allowed, 1 for authentication needed, others for
-	 *         not specified.
+	 * @param url
+	 *            url of API.
+	 * @return 0 for anonymous allowed, 1 for authentication needed, others for not
+	 *         specified.
 	 */
 	protected abstract int isAPIAuthNeeded(String url);
 
@@ -300,9 +279,9 @@ public abstract class AbstractDocBuilder {
 	protected abstract APIParameter getOutputParam(MethodDoc methodDoc);
 
 	protected abstract APIParameter getOutputParam(ClassDoc classDoc);
-	
+
 	protected abstract List<APIParameter> getInputParams(MethodDoc methodDoc);
-	
+
 	protected abstract APIParameter getInputParams(ClassDoc classDoc);
 
 	protected String getParamComment(MethodDoc method, String paramName) {
@@ -315,8 +294,7 @@ public abstract class AbstractDocBuilder {
 		return null;
 	}
 
-	protected boolean isProgramElementDocAnnotatedWith(ProgramElementDoc elementDoc,
-			String annotation) {
+	protected boolean isProgramElementDocAnnotatedWith(ProgramElementDoc elementDoc, String annotation) {
 		AnnotationDesc[] annotations = elementDoc.annotations();
 		for (int i = 0; i < annotations.length; i++) {
 			if (annotations[i].annotationType().qualifiedTypeName().equals(annotation)) {
@@ -329,23 +307,20 @@ public abstract class AbstractDocBuilder {
 	protected ModificationHistory getModificationHistory(ClassDoc classDoc) {
 		ModificationHistory history = new ModificationHistory();
 		if (classDoc != null) {
-			LinkedList<ModificationRecord> list = this
-					.getModificationRecords(classDoc);
+			LinkedList<ModificationRecord> list = this.getModificationRecords(classDoc);
 			history.addModificationRecords(list);
 		}
-		return history;		
+		return history;
 	}
-	
+
 	/*
 	 * get the modification history of the class.
 	 */
 	protected ModificationHistory getModificationHistory(Type type) {
 		ModificationHistory history = new ModificationHistory();
-		ClassDoc classDoc = this.wrDoc.getConfiguration().root.classNamed(type
-				.qualifiedTypeName());
+		ClassDoc classDoc = this.wrDoc.getConfiguration().root.classNamed(type.qualifiedTypeName());
 		if (classDoc != null) {
-			LinkedList<ModificationRecord> list = this
-					.getModificationRecords(classDoc);
+			LinkedList<ModificationRecord> list = this.getModificationRecords(classDoc);
 			history.addModificationRecords(list);
 		}
 		return history;
@@ -356,22 +331,19 @@ public abstract class AbstractDocBuilder {
 	 */
 	protected ModificationHistory getModificationHistory(MethodDoc methodDoc) {
 		ModificationHistory history = new ModificationHistory();
-		history.addModificationRecords(this.parseModificationRecords(methodDoc
-				.tags()));
+		history.addModificationRecords(this.parseModificationRecords(methodDoc.tags()));
 		return history;
 	}
 
 	/*
 	 * get the modification records of the class.
 	 */
-	protected LinkedList<ModificationRecord> getModificationRecords(
-			ClassDoc classDoc) {
+	protected LinkedList<ModificationRecord> getModificationRecords(ClassDoc classDoc) {
 		ClassDoc superClass = classDoc.superclass();
 		if (superClass == null) {
 			return new LinkedList<ModificationRecord>();
 		}
-		LinkedList<ModificationRecord> result = this
-				.getModificationRecords(superClass);
+		LinkedList<ModificationRecord> result = this.getModificationRecords(superClass);
 		result.addAll(this.parseModificationRecords(classDoc.tags()));
 		return result;
 	}
@@ -379,8 +351,7 @@ public abstract class AbstractDocBuilder {
 	/*
 	 * Parse tags to get customized parameters.
 	 */
-	protected LinkedList<APIParameter> parseCustomizedParameters(
-			MethodDoc methodDoc) {
+	protected LinkedList<APIParameter> parseCustomizedParameters(MethodDoc methodDoc) {
 		Tag[] tags = methodDoc.tags(WRParamTaglet.NAME);
 		LinkedList<APIParameter> result = new LinkedList<APIParameter>();
 		for (int i = 0; i < tags.length; i++) {
@@ -414,13 +385,10 @@ public abstract class AbstractDocBuilder {
 				if (i + 1 < tags.length) {
 					if ("@version".equalsIgnoreCase(tags[i + 1].name())) {
 						record.setVersion(tags[i + 1].text());
-						if (i + 2 < tags.length
-								&& ("@" + WRMemoTaglet.NAME)
-										.equalsIgnoreCase(tags[i + 2].name())) {
+						if (i + 2 < tags.length && ("@" + WRMemoTaglet.NAME).equalsIgnoreCase(tags[i + 2].name())) {
 							record.setMemo(tags[i + 2].text());
 						}
-					} else if (("@" + WRMemoTaglet.NAME)
-							.equalsIgnoreCase(tags[i + 1].name())) {
+					} else if (("@" + WRMemoTaglet.NAME).equalsIgnoreCase(tags[i + 1].name())) {
 						record.setMemo(tags[i + 1].text());
 					}
 				}
@@ -435,10 +403,10 @@ public abstract class AbstractDocBuilder {
 		Tag[] tags = methodDoc.tags(WRReturnCodeTaglet.NAME);
 		return WRReturnCodeTaglet.concat(tags);
 	}
-	
+
 	protected String getMQConsumerTopic(ClassDoc classDoc) {
 		Tag[] tags = classDoc.tags(WRMqConsumerTaglet.NAME);
-		if(tags.length == 0) {
+		if (tags.length == 0) {
 			return "";
 		}
 		return StringUtils.substringBefore(tags[0].text(), "\n");
@@ -446,12 +414,12 @@ public abstract class AbstractDocBuilder {
 
 	protected String getMQProducerTopic(ClassDoc classDoc) {
 		Tag[] tags = classDoc.tags(WRMqProducerTaglet.NAME);
-		if(tags.length == 0) {
+		if (tags.length == 0) {
 			return "";
 		}
 		return StringUtils.substringBefore(tags[0].text(), "\n");
-	}	
-	
+	}
+
 	protected boolean isInStopClasses(ClassDoc classDoc) {
 		String property = ApplicationContextConfig.getStopClasses();
 		if (property != null) {
@@ -480,69 +448,67 @@ public abstract class AbstractDocBuilder {
 	}
 
 	protected boolean isParameterizedTypeInStopClasses(Type type) {
-		if(!this.isInStopClasses(type.asClassDoc())) {
+		if (!this.isInStopClasses(type.asClassDoc())) {
 			return false;
 		}
 		ParameterizedType pt = type.asParameterizedType();
-		if(pt != null) {
-			for(Type arg : pt.typeArguments()) {
-				if(!this.isParameterizedTypeInStopClasses(arg)) {
+		if (pt != null) {
+			for (Type arg : pt.typeArguments()) {
+				if (!this.isParameterizedTypeInStopClasses(arg)) {
 					return false;
 				}
 			}
 		}
 		return true;
 	}
-	
-	protected List<APIParameter> getFields(Type type, ParameterType paramType,
-			HashSet<String> processingClasses) {
+
+	protected List<APIParameter> getFields(Type type, ParameterType paramType, HashSet<String> processingClasses) {
 		processingClasses.add(type.toString());
 		List<APIParameter> result = new LinkedList<APIParameter>();
 		if (!type.isPrimitive()) {
 			ParameterizedType pt = type.asParameterizedType();
 			if (pt != null && pt.typeArguments().length > 0) {
 				for (Type arg : pt.typeArguments()) {
-					if(!this.isParameterizedTypeInStopClasses(arg)) {
+					if (!this.isParameterizedTypeInStopClasses(arg)) {
 						APIParameter tmp = new APIParameter();
 						tmp.setName(arg.simpleTypeName());
 						tmp.setType(this.getTypeName(arg, false));
 						tmp.setDescription("");
 						tmp.setParentTypeArgument(true);
 						if (!processingClasses.contains(arg.qualifiedTypeName())) {
-							tmp.setFields(this.getFields(arg, paramType,
-									processingClasses));
+							tmp.setFields(this.getFields(arg, paramType, processingClasses));
 						}
 						result.add(tmp);
 					}
 				}
 			}
 
-			ClassDoc classDoc = this.wrDoc.getConfiguration().root
-					.classNamed(type.qualifiedTypeName());
+			ClassDoc classDoc = this.wrDoc.getConfiguration().root.classNamed(type.qualifiedTypeName());
 			if (classDoc != null) {
-				result.addAll(this.getFields(classDoc, paramType,
-						processingClasses));
+				result.addAll(this.getFields(classDoc, paramType, processingClasses));
 			}
 		}
 		return result;
 	}
 
-	protected List<APIParameter> getFields(ClassDoc classDoc,
-			ParameterType paramType, HashSet<String> processingClasses) {
+	protected List<APIParameter> getFields(ClassDoc classDoc, ParameterType paramType,
+			HashSet<String> processingClasses) {
 		processingClasses.add(classDoc.toString());
 		List<APIParameter> result = new LinkedList<APIParameter>();
-		
-		boolean isLomBokClass = this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Data") || 
-				(paramType == ParameterType.Response && this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Getter")) ||
-				(paramType == ParameterType.Request && this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Setter"));
-		
+
+		boolean isLomBokClass = this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Data")
+				|| (paramType == ParameterType.Response
+						&& this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Getter"))
+				|| (paramType == ParameterType.Request
+						&& this.isProgramElementDocAnnotatedWith(classDoc, "lombok.Setter"));
+
+		// todo
+		// this.wrDoc.getConfiguration().root.classNamed(type.qualifiedTypeName()).typeParameters()[0].qualifiedTypeName()
+
 		ClassDoc superClassDoc = classDoc.superclass();
-		if (superClassDoc != null
-				&& !this.isInStopClasses(superClassDoc)
-				&& !processingClasses.contains(superClassDoc
-						.qualifiedTypeName())) {
-			result.addAll(this.getFields(superClassDoc, paramType,
-					processingClasses));
+		if (superClassDoc != null && !this.isInStopClasses(superClassDoc)
+				&& !processingClasses.contains(superClassDoc.qualifiedTypeName())) {
+			result.addAll(this.getFields(superClassDoc, paramType, processingClasses));
 		}
 
 		if (this.isInStopClasses(classDoc)) {
@@ -556,31 +522,30 @@ public abstract class AbstractDocBuilder {
 		Set<String> transientFieldSet = new HashSet<>();
 
 		for (FieldDoc fieldDoc : fieldDocs) {
-			if ( !fieldDoc.isTransient() && !fieldDoc.isStatic() && (fieldDoc.isPublic() || isLomBokClass ||
-					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Getter") && paramType == ParameterType.Response) ||
-					(this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Setter") && paramType == ParameterType.Request))) {
+			if (!fieldDoc.isTransient() && !fieldDoc.isStatic()
+					&& (fieldDoc.isPublic() || isLomBokClass
+							|| (this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Getter")
+									&& paramType == ParameterType.Response)
+							|| (this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Setter")
+									&& paramType == ParameterType.Request))) {
 				APIParameter param = new APIParameter();
 				param.setName(fieldDoc.name());
 				param.setType(this.getTypeName(fieldDoc.type(), false));
-				if (!processingClasses.contains(fieldDoc.type()
-						.qualifiedTypeName())) {
-					param.setFields(this.getFields(fieldDoc.type(), paramType,
-							processingClasses));
+				if (!processingClasses.contains(fieldDoc.type().qualifiedTypeName())) {
+					param.setFields(this.getFields(fieldDoc.type(), paramType, processingClasses));
 				}
 				param.setDescription(this.getFieldDescription(fieldDoc));
-				param.setHistory(new ModificationHistory(this
-						.parseModificationRecords(fieldDoc.tags())));
-				param.setParameterOccurs(this.parseParameterOccurs(fieldDoc
-						.tags(WROccursTaglet.NAME)));
+				param.setHistory(new ModificationHistory(this.parseModificationRecords(fieldDoc.tags())));
+				param.setParameterOccurs(this.parseParameterOccurs(fieldDoc.tags(WROccursTaglet.NAME)));
 				result.add(param);
 			} else {
 				privateFieldDesc.put(fieldDoc.name(), fieldDoc.commentText());
 				String jsonField = this.getJsonField(fieldDoc);
-				if(jsonField != null) {
+				if (jsonField != null) {
 					privateJsonField.put(fieldDoc.name(), jsonField);
 				}
 				privateFieldValidator.put(fieldDoc.name(), this.getFieldValidatorDesc(fieldDoc));
-				if(fieldDoc.isTransient()) {
+				if (fieldDoc.isTransient()) {
 					transientFieldSet.add(fieldDoc.name());
 				}
 			}
@@ -588,20 +553,18 @@ public abstract class AbstractDocBuilder {
 
 		MethodDoc[] methodDocs = classDoc.methods(false);
 		for (MethodDoc methodDoc : methodDocs) {
-			if(transientFieldSet.contains(this.getFieldNameOfAccesser(methodDoc.name()))) {
+			if (transientFieldSet.contains(this.getFieldNameOfAccesser(methodDoc.name()))) {
 				continue;
 			}
-			if ((paramType == ParameterType.Response && this
-					.isGetterMethod(methodDoc))
-					|| (paramType == ParameterType.Request && this
-							.isSetterMethod(methodDoc))) {
+			if ((paramType == ParameterType.Response && this.isGetterMethod(methodDoc))
+					|| (paramType == ParameterType.Request && this.isSetterMethod(methodDoc))) {
 				APIParameter param = new APIParameter();
 				String fieldNameOfAccesser = this.getFieldNameOfAccesser(methodDoc.name());
 				param.setName(fieldNameOfAccesser);
 				String jsonField = this.getJsonField(methodDoc);
-				if(jsonField != null) {
+				if (jsonField != null) {
 					param.setName(jsonField);
-				} else if(privateJsonField.containsKey(param.getName())) {
+				} else if (privateJsonField.containsKey(param.getName())) {
 					param.setName(privateJsonField.get(param.getName()));
 				}
 				Type typeToProcess = null;
@@ -612,17 +575,13 @@ public abstract class AbstractDocBuilder {
 					typeToProcess = methodDoc.returnType();
 				}
 				param.setType(this.getTypeName(typeToProcess, false));
-				if (!processingClasses.contains(typeToProcess
-						.qualifiedTypeName())) {
-					param.setFields(this.getFields(typeToProcess, paramType,
-							processingClasses));
+				if (!processingClasses.contains(typeToProcess.qualifiedTypeName())) {
+					param.setFields(this.getFields(typeToProcess, paramType, processingClasses));
 				}
-				param.setHistory(new ModificationHistory(this
-						.parseModificationRecords(methodDoc.tags())));
+				param.setHistory(new ModificationHistory(this.parseModificationRecords(methodDoc.tags())));
 				if (StringUtils.isEmpty(methodDoc.commentText())) {
 					if (paramType == ParameterType.Request) {
-						param.setDescription(this.getParamComment(methodDoc,
-								methodDoc.parameters()[0].name()));
+						param.setDescription(this.getParamComment(methodDoc, methodDoc.parameters()[0].name()));
 					} else {
 						for (Tag tag : methodDoc.tags("return")) {
 							param.setDescription(tag.text());
@@ -638,26 +597,27 @@ public abstract class AbstractDocBuilder {
 						if (typeToProcess.typeName().equals("boolean")) {
 							temp = privateFieldDesc.get(param.getName());
 							if (temp == null) {
-								param.setDescription(privateFieldDesc.get("is" + net.winroad.wrdoclet.utils.Util.capitalize(param.getName())));
+								param.setDescription(privateFieldDesc
+										.get("is" + net.winroad.wrdoclet.utils.Util.capitalize(param.getName())));
 							}
-						} 
+						}
 					} else {
 						param.setDescription(temp);
 					}
 				}
-				
-				if(privateFieldValidator.get(fieldNameOfAccesser) != null) {
-					param.setDescription(param.getDescription() == null ? privateFieldValidator.get(fieldNameOfAccesser) : param.getDescription() + " " + privateFieldValidator.get(fieldNameOfAccesser));
+
+				if (privateFieldValidator.get(fieldNameOfAccesser) != null) {
+					param.setDescription(param.getDescription() == null ? privateFieldValidator.get(fieldNameOfAccesser)
+							: param.getDescription() + " " + privateFieldValidator.get(fieldNameOfAccesser));
 				}
 
-				param.setParameterOccurs(this.parseParameterOccurs(methodDoc
-						.tags(WROccursTaglet.NAME)));
+				param.setParameterOccurs(this.parseParameterOccurs(methodDoc.tags(WROccursTaglet.NAME)));
 				result.add(param);
 			}
 		}
 		return result;
 	}
-	
+
 	protected String getFieldDescription(FieldDoc fieldDoc) {
 		StringBuilder strBuilder = new StringBuilder();
 		strBuilder.append(fieldDoc.commentText());
@@ -665,59 +625,56 @@ public abstract class AbstractDocBuilder {
 		strBuilder.append(this.getFieldValidatorDesc(fieldDoc));
 		return strBuilder.toString();
 	}
-	
+
 	protected String getJsonField(MemberDoc memberDoc) {
-		for(AnnotationDesc annotationDesc : memberDoc.annotations()) {
-			if(annotationDesc.annotationType().qualifiedTypeName()
+		for (AnnotationDesc annotationDesc : memberDoc.annotations()) {
+			if (annotationDesc.annotationType().qualifiedTypeName()
 					.startsWith("com.fasterxml.jackson.annotation.JsonProperty")) {
-				if(annotationDesc.elementValues().length > 0) {
-					for(AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
-						if(elementValuePair.element().name().equals("value") && 
-								!StringUtils.isEmpty(elementValuePair.value().toString()) &&
-								!"\"\"".equals(elementValuePair.value().toString())) {
+				if (annotationDesc.elementValues().length > 0) {
+					for (AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
+						if (elementValuePair.element().name().equals("value")
+								&& !StringUtils.isEmpty(elementValuePair.value().toString())
+								&& !"\"\"".equals(elementValuePair.value().toString())) {
 							return elementValuePair.value().toString().replace("\"", "");
 						}
 					}
 				}
 			}
-			if(annotationDesc.annotationType().qualifiedTypeName()
+			if (annotationDesc.annotationType().qualifiedTypeName()
 					.startsWith("com.alibaba.fastjson.annotation.JSONField")) {
-				if(annotationDesc.elementValues().length > 0) {
-					for(AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
-						if(elementValuePair.element().name().equals("name") && 
-								!StringUtils.isEmpty(elementValuePair.value().toString()) &&
-								!"\"\"".equals(elementValuePair.value().toString())) {
+				if (annotationDesc.elementValues().length > 0) {
+					for (AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
+						if (elementValuePair.element().name().equals("name")
+								&& !StringUtils.isEmpty(elementValuePair.value().toString())
+								&& !"\"\"".equals(elementValuePair.value().toString())) {
 							return elementValuePair.value().toString().replace("\"", "");
 						}
 					}
 				}
-			}			
+			}
 		}
-		return null;		
+		return null;
 	}
-	
+
 	protected String getFieldValidatorDesc(FieldDoc fieldDoc) {
 		StringBuilder strBuilder = new StringBuilder();
-		for(AnnotationDesc annotationDesc : fieldDoc.annotations()) {
-			if(annotationDesc.annotationType().qualifiedTypeName()
-					.startsWith("org.hibernate.validator.constraints") ||
-				annotationDesc.annotationType().qualifiedTypeName()
-					.startsWith("javax.validation.constraints") ||
-				annotationDesc.annotationType().qualifiedTypeName()
-					.startsWith("lombok.NonNull") 
-					) {
+		for (AnnotationDesc annotationDesc : fieldDoc.annotations()) {
+			if (annotationDesc.annotationType().qualifiedTypeName().startsWith("org.hibernate.validator.constraints")
+					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("javax.validation.constraints")
+					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("lombok.NonNull")) {
 				strBuilder.append("@");
 				strBuilder.append(annotationDesc.annotationType().name());
-				if(annotationDesc.elementValues().length > 0) {
+				if (annotationDesc.elementValues().length > 0) {
 					strBuilder.append("(");
 					boolean isFirstElement = true;
-					for(AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
-						if(!isFirstElement) {
+					for (AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
+						if (!isFirstElement) {
 							strBuilder.append(",");
 						}
 						strBuilder.append(elementValuePair.element().name());
 						strBuilder.append("=");
-						strBuilder.append(net.winroad.wrdoclet.utils.Util.decodeUnicode(elementValuePair.value().toString()));
+						strBuilder.append(
+								net.winroad.wrdoclet.utils.Util.decodeUnicode(elementValuePair.value().toString()));
 						isFirstElement = false;
 					}
 					strBuilder.append(")");
@@ -725,7 +682,7 @@ public abstract class AbstractDocBuilder {
 				strBuilder.append(" ");
 			}
 		}
-		return strBuilder.toString();		
+		return strBuilder.toString();
 	}
 
 	protected String getTypeName(Type typeToProcess, boolean ignoreSuperType) {
@@ -751,8 +708,7 @@ public abstract class AbstractDocBuilder {
 			if (superClass != null) {
 				// handle enum to output enum values into doc
 				if ("java.lang.Enum".equals(superClass.qualifiedTypeName())) {
-					FieldDoc[] enumConstants = typeToProcess.asClassDoc()
-							.enumConstants();
+					FieldDoc[] enumConstants = typeToProcess.asClassDoc().enumConstants();
 					StringBuilder strBuilder = new StringBuilder();
 					strBuilder.append("Enum[");
 					for (FieldDoc enumConstant : enumConstants) {
@@ -764,8 +720,9 @@ public abstract class AbstractDocBuilder {
 					strBuilder.deleteCharAt(len - 1);
 					strBuilder.append("]");
 					return strBuilder.toString();
-				} else if(!ignoreSuperType && !this.isInStopClasses(superClass)) {
-					return typeToProcess.qualifiedTypeName() + " extends " + this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
+				} else if (!ignoreSuperType && !this.isInStopClasses(superClass)) {
+					return typeToProcess.qualifiedTypeName() + " extends "
+							+ this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
 				}
 			}
 		}
@@ -781,15 +738,12 @@ public abstract class AbstractDocBuilder {
 			if (("@" + WROccursTaglet.NAME).equalsIgnoreCase(tags[i].name())) {
 				if (WROccursTaglet.REQUIRED.equalsIgnoreCase(tags[i].text())) {
 					return ParameterOccurs.REQUIRED;
-				} else if (WROccursTaglet.OPTIONAL.equalsIgnoreCase(tags[i]
-						.text())) {
+				} else if (WROccursTaglet.OPTIONAL.equalsIgnoreCase(tags[i].text())) {
 					return ParameterOccurs.OPTIONAL;
-				} else if (WROccursTaglet.DEPENDS.equalsIgnoreCase(tags[i]
-						.text())) {
+				} else if (WROccursTaglet.DEPENDS.equalsIgnoreCase(tags[i].text())) {
 					return ParameterOccurs.DEPENDS;
 				} else {
-					this.logger.warn("Unexpected WROccursTaglet: "
-							+ tags[i].text());
+					this.logger.warn("Unexpected WROccursTaglet: " + tags[i].text());
 				}
 			}
 		}
@@ -800,14 +754,11 @@ public abstract class AbstractDocBuilder {
 	 * is the method a getter method of a field.
 	 */
 	protected boolean isGetterMethod(MethodDoc methodDoc) {
-		if (methodDoc.parameters() != null
-				&& methodDoc.parameters().length == 0
-				&& (!"boolean".equalsIgnoreCase(methodDoc.returnType()
-						.qualifiedTypeName()) && methodDoc.name().matches(
-						"^get.+"))
-				|| (("boolean".equalsIgnoreCase(methodDoc.returnType()
-						.qualifiedTypeName()) && methodDoc.name().matches(
-						"^is.+")))) {
+		if (methodDoc.parameters() != null && methodDoc.parameters().length == 0
+				&& (!"boolean".equalsIgnoreCase(methodDoc.returnType().qualifiedTypeName())
+						&& methodDoc.name().matches("^get.+"))
+				|| (("boolean".equalsIgnoreCase(methodDoc.returnType().qualifiedTypeName())
+						&& methodDoc.name().matches("^is.+")))) {
 			return true;
 		}
 		return false;
@@ -817,8 +768,7 @@ public abstract class AbstractDocBuilder {
 	 * is the method a setter method of a field.
 	 */
 	protected boolean isSetterMethod(MethodDoc methodDoc) {
-		if (methodDoc.parameters() != null
-				&& methodDoc.parameters().length == 1
+		if (methodDoc.parameters() != null && methodDoc.parameters().length == 1
 				&& methodDoc.name().matches("^set.+")) {
 			return true;
 		}
@@ -831,21 +781,17 @@ public abstract class AbstractDocBuilder {
 	 */
 	protected String getFieldNameOfAccesser(String methodName) {
 		if (methodName.startsWith("get")) {
-			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName
-					.replaceFirst("get", ""));
+			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName.replaceFirst("get", ""));
 		} else if (methodName.startsWith("set")) {
-			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName
-					.replaceFirst("set", ""));
+			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName.replaceFirst("set", ""));
 		} else {
-			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName
-					.replaceFirst("is", ""));
+			return net.winroad.wrdoclet.utils.Util.uncapitalize(methodName.replaceFirst("is", ""));
 		}
 	}
 
 	public static Document readXMLConfig(String filePath)
 			throws ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory builderFactory = DocumentBuilderFactory
-				.newInstance();
+		DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
 		builderFactory.setNamespaceAware(true);
 		DocumentBuilder builder = builderFactory.newDocumentBuilder();
 		File dubboConfig = new File(filePath);
@@ -862,54 +808,20 @@ public abstract class AbstractDocBuilder {
 		}
 		return null;
 	}
-	
-	protected void processAnnotations(AnnotationDesc annotation,
-			APIParameter apiParameter) {
-		if ("org.springframework.web.bind.annotation.RequestBody"
-				.equals(annotation.annotationType().qualifiedName())
-				&& annotation.elementValues() != null
-				&& annotation.elementValues().length != 0) {
+
+	protected void processAnnotations(AnnotationDesc annotation, APIParameter apiParameter) {
+		if (annotation.annotationType().qualifiedName().startsWith("org.springframework.web.bind.annotation.")) {
 			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("required")) {
-					if (annotation.elementValues()[0].value().value()
-							.equals(true)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
-					} else {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
-					}
-				}
-			}
-		}
-		if ("org.springframework.web.bind.annotation.PathVariable"
-				.equals(annotation.annotationType().qualifiedName())) {
-			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("value")) {
-					if (annotation.elementValues()[0].value() != null) {
-						apiParameter.setName(annotation.elementValues()[0]
-								.value().toString().replace("\"", ""));
-					}
-				}
-			}
-		}
-		if ("org.springframework.web.bind.annotation.RequestParam"
-				.equals(annotation.annotationType().qualifiedName())) {
-			for (ElementValuePair pair : annotation.elementValues()) {
-				if (pair.element().name().equals("value")) {
-					if (annotation.elementValues()[0].value() != null) {
-						apiParameter.setName(annotation.elementValues()[0]
-								.value().toString().replace("\"", ""));
+				if (pair.element().name().equals("value") || pair.element().name().equals("name")) {
+					if (pair.value() != null) {
+						apiParameter.setName(pair.value().toString().replace("\"", ""));
 					}
 				}
 				if (pair.element().name().equals("required")) {
-					if (annotation.elementValues()[0].value().value()
-							.equals(true)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
+					if (pair.value().value().equals(true)) {
+						apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
 					} else {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
+						apiParameter.setParameterOccurs(ParameterOccurs.OPTIONAL);
 					}
 				}
 			}
@@ -933,14 +845,10 @@ public abstract class AbstractDocBuilder {
 					apiParameter.setDescription(strArr[j]);
 					break;
 				case 3:
-					if (StringUtils.equalsIgnoreCase(strArr[j],
-							WROccursTaglet.REQUIRED)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.REQUIRED);
-					} else if (StringUtils.equalsIgnoreCase(strArr[j],
-							WROccursTaglet.OPTIONAL)) {
-						apiParameter
-								.setParameterOccurs(ParameterOccurs.OPTIONAL);
+					if (StringUtils.equalsIgnoreCase(strArr[j], WROccursTaglet.REQUIRED)) {
+						apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
+					} else if (StringUtils.equalsIgnoreCase(strArr[j], WROccursTaglet.OPTIONAL)) {
+						apiParameter.setParameterOccurs(ParameterOccurs.OPTIONAL);
 					}
 					break;
 				default:
@@ -948,14 +856,12 @@ public abstract class AbstractDocBuilder {
 				}
 			}
 			HashSet<String> processingClasses = new HashSet<String>();
-			ClassDoc c = this.wrDoc.getConfiguration().root
-					.classNamed(apiParameter.getType());
+			ClassDoc c = this.wrDoc.getConfiguration().root.classNamed(apiParameter.getType());
 			if (c != null) {
-				apiParameter.setFields(this.getFields(c, ParameterType.Request,
-						processingClasses));
+				apiParameter.setFields(this.getFields(c, ParameterType.Request, processingClasses));
 			}
 			paramList.add(apiParameter);
 		}
 	}
-	
+
 }
