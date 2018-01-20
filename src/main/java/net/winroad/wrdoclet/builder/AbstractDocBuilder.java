@@ -721,13 +721,18 @@ public abstract class AbstractDocBuilder {
 					strBuilder.append("]");
 					return strBuilder.toString();
 				} else if (!ignoreSuperType && !this.isInStopClasses(superClass)) {
-					return typeToProcess.qualifiedTypeName() + " extends "
+					return typeToProcess.asClassDoc().toString() + " extends "
 							+ this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
 				}
 			}
+			if(typeToProcess.qualifiedTypeName().equals("T")) {
+				return typeToProcess.toString();
+			} else {
+				return typeToProcess.asClassDoc().toString();
+			}
+		} else {
+			return typeToProcess.toString();
 		}
-
-		return typeToProcess.toString();
 	}
 
 	/*
