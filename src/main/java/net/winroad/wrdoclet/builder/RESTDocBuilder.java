@@ -319,11 +319,12 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 	 * param which will not be displayed in doc.
 	 */
 	protected boolean isInIgnoreParamList(Parameter param) {
-		return "javax.servlet.http.HttpServletRequest".equals(param.name())
-				|| "javax.servlet.http.HttpSession".equals(param.name())
-				|| "org.springframework.web.context.request.WebRequest".equals(param.name())
-				|| "java.io.OutputStream".equals(param.name())
-				|| "org.springframework.http.HttpEntity<java.lang.String>".equals(param.name());
+		return "javax.servlet.http.HttpServletRequest".equals(param.type().qualifiedTypeName())
+				|| "javax.servlet.http.HttpServletResponse".equals(param.type().qualifiedTypeName())
+				|| "javax.servlet.http.HttpSession".equals(param.type().qualifiedTypeName())
+				|| "org.springframework.web.context.request.WebRequest".equals(param.type().qualifiedTypeName())
+				|| "java.io.OutputStream".equals(param.type().qualifiedTypeName())
+				|| "org.springframework.http.HttpEntity<java.lang.String>".equals(param.type().qualifiedTypeName());
 	}
 	
 	@Override
@@ -340,6 +341,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 			apiParameter.setParameterOccurs(ParameterOccurs.REQUIRED);
 			apiParameter.setType(this.getTypeName(parameters[i].type(), false));
 			apiParameter.setName(parameters[i].name());
+
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(parameters[i].type(),
 					ParameterType.Request, processingClasses));

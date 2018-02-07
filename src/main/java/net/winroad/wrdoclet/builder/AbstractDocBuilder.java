@@ -16,14 +16,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import net.winroad.wrdoclet.data.APIParameter;
-import net.winroad.wrdoclet.data.ModificationHistory;
-import net.winroad.wrdoclet.data.ModificationRecord;
-import net.winroad.wrdoclet.data.OpenAPI;
-import net.winroad.wrdoclet.data.ParameterOccurs;
-import net.winroad.wrdoclet.data.ParameterType;
-import net.winroad.wrdoclet.data.RequestMapping;
-import net.winroad.wrdoclet.data.WRDoc;
+import net.winroad.wrdoclet.data.*;
 import net.winroad.wrdoclet.taglets.WRBriefTaglet;
 import net.winroad.wrdoclet.taglets.WRMemoTaglet;
 import net.winroad.wrdoclet.taglets.WRMqConsumerTaglet;
@@ -829,6 +822,17 @@ public abstract class AbstractDocBuilder {
 						apiParameter.setParameterOccurs(ParameterOccurs.OPTIONAL);
 					}
 				}
+			}
+			if(annotation.annotationType().qualifiedName().equals("org.springframework.web.bind.annotation.PathVariable")) {
+				apiParameter.setParameterLocation(ParameterLocation.PATH);
+			} else if(annotation.annotationType().qualifiedName().equals("org.springframework.web.bind.annotation.CookieValue")) {
+				apiParameter.setParameterLocation(ParameterLocation.COOKIE);
+			} else if(annotation.annotationType().qualifiedName().equals("org.springframework.web.bind.annotation.RequestHeader")) {
+				apiParameter.setParameterLocation(ParameterLocation.HEADER);
+			} else if(annotation.annotationType().qualifiedName().equals("org.springframework.web.bind.annotation.RequestBody")) {
+				apiParameter.setParameterLocation(ParameterLocation.BODY);
+			} else if(annotation.annotationType().qualifiedName().equals("org.springframework.web.bind.annotation.RequestParam")) {
+				apiParameter.setParameterLocation(ParameterLocation.QUERY);
 			}
 		}
 	}

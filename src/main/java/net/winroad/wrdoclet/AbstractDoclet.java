@@ -1,5 +1,9 @@
 package net.winroad.wrdoclet;
 
+import net.winroad.wrdoclet.OASV3.*;
+import net.winroad.wrdoclet.data.APIParameter;
+import net.winroad.wrdoclet.data.OpenAPI;
+import net.winroad.wrdoclet.data.ParameterOccurs;
 import net.winroad.wrdoclet.data.WRDoc;
 
 import com.sun.javadoc.ClassDoc;
@@ -10,6 +14,12 @@ import com.sun.tools.doclets.internal.toolkit.Configuration;
 import com.sun.tools.doclets.internal.toolkit.builders.AbstractBuilder;
 import com.sun.tools.doclets.internal.toolkit.builders.BuilderFactory;
 import com.sun.tools.doclets.internal.toolkit.util.ClassTree;
+import org.springframework.util.StringUtils;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 public abstract class AbstractDoclet {
 
@@ -143,6 +153,124 @@ public abstract class AbstractDoclet {
 		for (int i = 0; i < packages.length; i++) {
 			generateClassFiles(packages[i].allClasses(), classtree);
 		}
+	}
+
+	protected OASV3 convertToOAS(OpenAPI openAPI, String version) {
+		if(StringUtils.isEmpty(openAPI.getRequestMapping().getMethodType())) {
+			return null;
+		}
+		OASV3 OASV3 = new OASV3();
+		Components components = new Components();
+		OASV3.setComponents(components);
+		processOASInfo(openAPI, version, OASV3);
+		processPaths(openAPI, OASV3);
+		processTags(openAPI, OASV3);
+		return OASV3;
+	}
+
+	private void processTags(OpenAPI openAPI, OASV3 OASV3) {
+		List<Tag> tags = new LinkedList<>();
+		for(String tag : openAPI.getTags()) {
+			Tag tagObj = new Tag();
+			tagObj.setName(tag);
+			tags.add(tagObj);
+		}
+		OASV3.setTags(tags);
+	}
+
+	private void processPaths(OpenAPI openAPI, OASV3 OASV3) {
+		HashMap<String, PathItem> paths = new HashMap<>();
+		OASV3.setPaths(paths);
+		List<Parameter> parameterList = new LinkedList<>();
+		for(APIParameter apiParameter : openAPI.getInParameters()) {
+			Parameter parameter = convertParameter(apiParameter);
+			parameterList.add(parameter);
+		}
+
+		String methodTypeStr = openAPI.getRequestMapping().getMethodType().toLowerCase();
+		String[] methodTypes = methodTypeStr.split(",");
+		PathItem pathItem = new PathItem();
+		pathItem.setDescription(openAPI.getDescription());
+		pathItem.setParameters(parameterList);
+		for(String methodType : methodTypes) {
+			methodType = methodType.trim();
+			Operation operation = new Operation();
+			operation.setTags(new LinkedList<>(openAPI.getTags()));
+			operation.setOperationId(openAPI.getRequestMapping().getUrl() + methodType);
+			if(methodType.equalsIgnoreCase("get")) {
+				pathItem.setGet(operation);
+			} else if(methodType.equalsIgnoreCase("post")) {
+				pathItem.setPost(operation);
+			} else if(methodType.equalsIgnoreCase("options")) {
+				pathItem.setOptions(operation);
+			}
+			paths.put(openAPI.getRequestMapping().getUrl(), pathItem);
+		}
+	}
+
+	private Parameter convertParameter(APIParameter apiParameter) {
+		Parameter parameter = new Parameter();
+		parameter.setName(apiParameter.getName());
+		parameter.setDescription(apiParameter.getDescription());
+		parameter.setIn(apiParameter.getParameterLocation() != null ? apiParameter.getParameterLocation().toString().toLowerCase() : "");
+		parameter.setRequired(ParameterOccurs.REQUIRED.equals(apiParameter.getParameterOccurs()));
+		Schema schema = new Schema();
+		setSchemaType(apiParameter.getType(), apiParameter.getName(), schema);
+		parameter.setSchema(schema);
+		return parameter;
+	}
+
+	private void setSchemaType(String paramType, String paramName, Schema schema) {
+		if(paramType.equals("java.lang.String")) {
+            schema.setType("string");
+        } else if(paramType.equals("java.lang.Integer") || paramType.equals("int")) {
+            schema.setType("integer");
+            schema.setFormat("int32");
+        } else if(paramType.equals("java.lang.Long") || paramType.equals("long")) {
+            schema.setType("integer");
+            schema.setFormat("int64");
+        } else if(paramType.equals("java.lang.Boolean") || paramType.equals("boolean")) {
+            schema.setType("boolean");
+        } else if(paramType.equals("java.lang.Byte") || paramType.equals("byte")) {
+            schema.setType("string");
+            schema.setFormat("byte");
+        } else if(paramType.equals("java.lang.Double") || paramType.equals("double")) {
+            schema.setType("number");
+            schema.setFormat("double");
+        } else if(paramType.equals("java.lang.Float") || paramType.equals("float")) {
+            schema.setType("number");
+            schema.setFormat("float");
+        } else if(paramType.equals("java.util.Date")) {
+            schema.setType("string");
+            schema.setFormat("date");
+        } else if(paramType.startsWith("java.util.List")) {
+			schema.setType("array");
+			Schema items = new Schema();
+			String listItemType = paramType.substring("java.util.List<".length(), paramType.length()-1);
+			this.setSchemaType(listItemType, listItemType, items);
+			schema.setItems(items);
+		} else if(paramType.endsWith("[]")) {
+			schema.setType("array");
+			Schema items = new Schema();
+			String listItemType = paramType.substring(0, paramType.length() - 2);
+			this.setSchemaType(listItemType, listItemType, items);
+			schema.setItems(items);
+		} else if(paramType.startsWith("Enum[")) {
+			schema.setType("string");
+			String enumValueStr = paramType.substring("Enum[".length(), paramType.length()-1);
+			List<String> enumValues = Arrays.asList(enumValueStr.split(","));
+			schema.setEnumField(enumValues);
+		} else {
+            schema.setRef("#/components/schemas/" + paramName);
+        }
+	}
+
+	private void processOASInfo(OpenAPI openAPI, String version, OASV3 OASV3) {
+		Info info = new Info();
+		info.setTitle(StringUtils.isEmpty(openAPI.getBrief()) ? openAPI.getQualifiedName() : openAPI.getBrief());
+		info.setDescription(openAPI.getDescription());
+		info.setVersion(version);
+		OASV3.setInfo(info);
 	}
 
 	/**

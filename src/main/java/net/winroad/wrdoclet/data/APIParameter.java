@@ -11,6 +11,7 @@ public class APIParameter {
 	private String name;
 	private String description;
 	private ParameterOccurs parameterOccurs;
+	private ParameterLocation parameterLocation;
 	private String type;
 	private ModificationHistory history;
 	private List<APIParameter> fields;
@@ -62,6 +63,14 @@ public class APIParameter {
 
 	public void setParameterOccurs(ParameterOccurs parameterOccurs) {
 		this.parameterOccurs = parameterOccurs;
+	}
+
+	public ParameterLocation getParameterLocation() {
+		return parameterLocation;
+	}
+
+	public void setParameterLocation(ParameterLocation parameterLocation) {
+		this.parameterLocation = parameterLocation;
 	}
 
 	public String getType() {
