@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashMap;
 import java.util.List;
 
 @Getter
@@ -24,4 +25,5 @@ public class Schema extends Reference{
     @JsonProperty("enum")
     private List<String> enumField;
 
+    private HashMap<String, Schema> properties;
 }

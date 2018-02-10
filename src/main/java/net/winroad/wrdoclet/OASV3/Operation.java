@@ -3,6 +3,7 @@ package net.winroad.wrdoclet.OASV3;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashMap;
 import java.util.List;
 
 @Getter
@@ -11,4 +12,5 @@ public class Operation {
     private String operationId;
     private List<String> tags;
 
+    private HashMap<String, Response> responses;
 }

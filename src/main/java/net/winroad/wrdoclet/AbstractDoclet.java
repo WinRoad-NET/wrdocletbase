@@ -14,6 +14,7 @@ import com.sun.tools.doclets.internal.toolkit.Configuration;
 import com.sun.tools.doclets.internal.toolkit.builders.AbstractBuilder;
 import com.sun.tools.doclets.internal.toolkit.builders.BuilderFactory;
 import com.sun.tools.doclets.internal.toolkit.util.ClassTree;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
@@ -160,10 +161,12 @@ public abstract class AbstractDoclet {
 			return null;
 		}
 		OASV3 OASV3 = new OASV3();
+		HashMap<String, Schema> componentSchemas = new HashMap<>();
 		Components components = new Components();
+		components.setSchemas(componentSchemas);
 		OASV3.setComponents(components);
 		processOASInfo(openAPI, version, OASV3);
-		processPaths(openAPI, OASV3);
+		processPaths(openAPI, OASV3, componentSchemas);
 		processTags(openAPI, OASV3);
 		return OASV3;
 	}
@@ -178,12 +181,12 @@ public abstract class AbstractDoclet {
 		OASV3.setTags(tags);
 	}
 
-	private void processPaths(OpenAPI openAPI, OASV3 OASV3) {
+	private void processPaths(OpenAPI openAPI, OASV3 OASV3, HashMap<String, Schema> componentSchemas) {
 		HashMap<String, PathItem> paths = new HashMap<>();
 		OASV3.setPaths(paths);
 		List<Parameter> parameterList = new LinkedList<>();
 		for(APIParameter apiParameter : openAPI.getInParameters()) {
-			Parameter parameter = convertParameter(apiParameter);
+			Parameter parameter = convertParameter(apiParameter, componentSchemas);
 			parameterList.add(parameter);
 		}
 
@@ -197,6 +200,25 @@ public abstract class AbstractDoclet {
 			Operation operation = new Operation();
 			operation.setTags(new LinkedList<>(openAPI.getTags()));
 			operation.setOperationId(openAPI.getRequestMapping().getUrl() + methodType);
+			HashMap<String, Response> responses = new HashMap<>();
+			Response response = new Response();
+			responses.put("200", response);
+			response.setDescription(openAPI.getOutParameter() == null ? "null" :
+					StringUtils.isEmpty(openAPI.getOutParameter().getDescription()) ? openAPI.getOutParameter().getName() :
+							openAPI.getOutParameter().getDescription());
+			HashMap<String, MediaType> content = new HashMap<>();
+			MediaType mediaType = new MediaType();
+			content.put("application/json", mediaType);
+			if(openAPI.getOutParameter() != null) {
+				Schema schema = new Schema();
+				mediaType.setSchema(schema);
+				if(setSchemaType(openAPI.getOutParameter().getType(), schema)) {
+					this.convertToComponentSchema(openAPI.getOutParameter(), componentSchemas);
+				}
+			}
+			response.setContent(content);
+			operation.setResponses(responses);
+
 			if(methodType.equalsIgnoreCase("get")) {
 				pathItem.setGet(operation);
 			} else if(methodType.equalsIgnoreCase("post")) {
@@ -204,56 +226,76 @@ public abstract class AbstractDoclet {
 			} else if(methodType.equalsIgnoreCase("options")) {
 				pathItem.setOptions(operation);
 			}
-			paths.put(openAPI.getRequestMapping().getUrl(), pathItem);
+			paths.put((openAPI.getRequestMapping().getUrl().startsWith("/") ? "" : "/") +
+					openAPI.getRequestMapping().getUrl(), pathItem);
 		}
 	}
 
-	private Parameter convertParameter(APIParameter apiParameter) {
+	private Parameter convertParameter(APIParameter apiParameter, HashMap<String, Schema> componentSchemas) {
 		Parameter parameter = new Parameter();
 		parameter.setName(apiParameter.getName());
 		parameter.setDescription(apiParameter.getDescription());
 		parameter.setIn(apiParameter.getParameterLocation() != null ? apiParameter.getParameterLocation().toString().toLowerCase() : "");
 		parameter.setRequired(ParameterOccurs.REQUIRED.equals(apiParameter.getParameterOccurs()));
 		Schema schema = new Schema();
-		setSchemaType(apiParameter.getType(), apiParameter.getName(), schema);
 		parameter.setSchema(schema);
+		if(setSchemaType(apiParameter.getType(), schema)) {
+			this.convertToComponentSchema(apiParameter, componentSchemas);
+		}
 		return parameter;
 	}
 
-	private void setSchemaType(String paramType, String paramName, Schema schema) {
+	private void convertToComponentSchema(APIParameter apiParameter, HashMap<String, Schema> componentSchemas) {
+		Schema schema = new Schema();
+		schema.setType("object");
+		if(!CollectionUtils.isEmpty(apiParameter.getFields())) {
+			HashMap<String, Schema> properties = new HashMap<>();
+			for (APIParameter field: apiParameter.getFields()) {
+				Schema fieldSchema = new Schema();
+				if(setSchemaType(field.getType(), fieldSchema)) {
+					this.convertToComponentSchema(field, componentSchemas);
+				}
+				properties.put(field.getName(), fieldSchema);
+			}
+			schema.setProperties(properties);
+		}
+		componentSchemas.put(apiParameter.getType().replace(' ', '_'), schema);
+	}
+
+	private boolean setSchemaType(String paramType, Schema schema) {
 		if(paramType.equals("java.lang.String")) {
-            schema.setType("string");
-        } else if(paramType.equals("java.lang.Integer") || paramType.equals("int")) {
-            schema.setType("integer");
-            schema.setFormat("int32");
-        } else if(paramType.equals("java.lang.Long") || paramType.equals("long")) {
-            schema.setType("integer");
-            schema.setFormat("int64");
-        } else if(paramType.equals("java.lang.Boolean") || paramType.equals("boolean")) {
-            schema.setType("boolean");
-        } else if(paramType.equals("java.lang.Byte") || paramType.equals("byte")) {
-            schema.setType("string");
-            schema.setFormat("byte");
-        } else if(paramType.equals("java.lang.Double") || paramType.equals("double")) {
-            schema.setType("number");
-            schema.setFormat("double");
-        } else if(paramType.equals("java.lang.Float") || paramType.equals("float")) {
-            schema.setType("number");
-            schema.setFormat("float");
-        } else if(paramType.equals("java.util.Date")) {
-            schema.setType("string");
-            schema.setFormat("date");
-        } else if(paramType.startsWith("java.util.List")) {
+			schema.setType("string");
+		} else if(paramType.equals("java.lang.Integer") || paramType.equals("int")) {
+			schema.setType("integer");
+			schema.setFormat("int32");
+		} else if(paramType.equals("java.lang.Long") || paramType.equals("long")) {
+			schema.setType("integer");
+			schema.setFormat("int64");
+		} else if(paramType.equals("java.lang.Boolean") || paramType.equals("boolean")) {
+			schema.setType("boolean");
+		} else if(paramType.equals("java.lang.Byte") || paramType.equals("byte")) {
+			schema.setType("string");
+			schema.setFormat("byte");
+		} else if(paramType.equals("java.lang.Double") || paramType.equals("double")) {
+			schema.setType("number");
+			schema.setFormat("double");
+		} else if(paramType.equals("java.lang.Float") || paramType.equals("float")) {
+			schema.setType("number");
+			schema.setFormat("float");
+		} else if(paramType.equals("java.util.Date")) {
+			schema.setType("string");
+			schema.setFormat("date");
+		} else if(paramType.startsWith("java.util.List")) {
 			schema.setType("array");
 			Schema items = new Schema();
 			String listItemType = paramType.substring("java.util.List<".length(), paramType.length()-1);
-			this.setSchemaType(listItemType, listItemType, items);
+			this.setSchemaType(listItemType, items);
 			schema.setItems(items);
 		} else if(paramType.endsWith("[]")) {
 			schema.setType("array");
 			Schema items = new Schema();
 			String listItemType = paramType.substring(0, paramType.length() - 2);
-			this.setSchemaType(listItemType, listItemType, items);
+			this.setSchemaType(listItemType, items);
 			schema.setItems(items);
 		} else if(paramType.startsWith("Enum[")) {
 			schema.setType("string");
@@ -261,8 +303,10 @@ public abstract class AbstractDoclet {
 			List<String> enumValues = Arrays.asList(enumValueStr.split(","));
 			schema.setEnumField(enumValues);
 		} else {
-            schema.setRef("#/components/schemas/" + paramName);
-        }
+			schema.setRef("#/components/schemas/" + paramType.replace(' ', '_'));
+			return true;
+		}
+		return false;
 	}
 
 	private void processOASInfo(OpenAPI openAPI, String version, OASV3 OASV3) {

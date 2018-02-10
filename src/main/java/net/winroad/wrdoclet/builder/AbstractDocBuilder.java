@@ -704,13 +704,15 @@ public abstract class AbstractDocBuilder {
 					FieldDoc[] enumConstants = typeToProcess.asClassDoc().enumConstants();
 					StringBuilder strBuilder = new StringBuilder();
 					strBuilder.append("Enum[");
-					for (FieldDoc enumConstant : enumConstants) {
-						strBuilder.append(enumConstant.name());
-						strBuilder.append(",");
+					if(enumConstants.length > 0) {
+						for (FieldDoc enumConstant : enumConstants) {
+							strBuilder.append(enumConstant.name());
+							strBuilder.append(",");
+						}
+						int len = strBuilder.length();
+						// trim the last ","
+						strBuilder.deleteCharAt(len - 1);
 					}
-					int len = strBuilder.length();
-					// trim the last ","
-					strBuilder.deleteCharAt(len - 1);
 					strBuilder.append("]");
 					return strBuilder.toString();
 				} else if (!ignoreSuperType && !this.isInStopClasses(superClass)) {

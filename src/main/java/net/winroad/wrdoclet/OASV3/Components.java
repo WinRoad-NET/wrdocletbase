@@ -8,7 +8,7 @@ import java.util.HashMap;
 @Getter
 @Setter
 public class Components {
-    private HashMap<String, Object> schemas;
+    private HashMap<String, Schema> schemas;
     private HashMap<String, Object> responses;
     private HashMap<String, Object> parameters;
     private HashMap<String, Object> examples;
