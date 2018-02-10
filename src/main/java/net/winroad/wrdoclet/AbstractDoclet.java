@@ -204,7 +204,8 @@ public abstract class AbstractDoclet {
 			Response response = new Response();
 			responses.put("200", response);
 			response.setDescription(openAPI.getOutParameter() == null ? "null" :
-					StringUtils.isEmpty(openAPI.getOutParameter().getDescription()) ? openAPI.getOutParameter().getName() :
+					StringUtils.isEmpty(openAPI.getOutParameter().getDescription()) ?
+							(StringUtils.isEmpty(openAPI.getOutParameter().getName()) ? openAPI.getOutParameter().getType() : openAPI.getOutParameter().getName()) :
 							openAPI.getOutParameter().getDescription());
 			HashMap<String, MediaType> content = new HashMap<>();
 			MediaType mediaType = new MediaType();
@@ -263,6 +264,7 @@ public abstract class AbstractDoclet {
 	}
 
 	private boolean setSchemaType(String paramType, Schema schema) {
+		boolean result = false;
 		if(paramType.equals("java.lang.String")) {
 			schema.setType("string");
 		} else if(paramType.equals("java.lang.Integer") || paramType.equals("int")) {
@@ -289,13 +291,13 @@ public abstract class AbstractDoclet {
 			schema.setType("array");
 			Schema items = new Schema();
 			String listItemType = paramType.substring("java.util.List<".length(), paramType.length()-1);
-			this.setSchemaType(listItemType, items);
+			result = this.setSchemaType(listItemType, items);
 			schema.setItems(items);
 		} else if(paramType.endsWith("[]")) {
 			schema.setType("array");
 			Schema items = new Schema();
 			String listItemType = paramType.substring(0, paramType.length() - 2);
-			this.setSchemaType(listItemType, items);
+			result = this.setSchemaType(listItemType, items);
 			schema.setItems(items);
 		} else if(paramType.startsWith("Enum[")) {
 			schema.setType("string");
@@ -304,9 +306,9 @@ public abstract class AbstractDoclet {
 			schema.setEnumField(enumValues);
 		} else {
 			schema.setRef("#/components/schemas/" + paramType.replace(' ', '_'));
-			return true;
+			result = true;
 		}
-		return false;
+		return result;
 	}
 
 	private void processOASInfo(OpenAPI openAPI, String version, OASV3 OASV3) {
