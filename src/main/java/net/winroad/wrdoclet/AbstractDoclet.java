@@ -260,7 +260,14 @@ public abstract class AbstractDoclet {
 			}
 			schema.setProperties(properties);
 		}
-		componentSchemas.put(apiParameter.getType().replace(' ', '_'), schema);
+
+		if(!apiParameter.getType().startsWith("java.util.List")) {
+			String temp = org.apache.commons.lang.StringUtils.removeEnd(apiParameter.getType().trim(), "[]");
+			temp = org.apache.commons.lang.StringUtils.substringBefore(temp, " ");
+			if(!componentSchemas.containsKey(temp) || componentSchemas.get(temp).getProperties() == null) {
+				componentSchemas.put(temp, schema);
+			}
+		}
 	}
 
 	private boolean setSchemaType(String paramType, Schema schema) {
@@ -305,7 +312,7 @@ public abstract class AbstractDoclet {
 			List<String> enumValues = Arrays.asList(enumValueStr.split(","));
 			schema.setEnumField(enumValues);
 		} else {
-			schema.setRef("#/components/schemas/" + paramType.replace(' ', '_'));
+			schema.setRef("#/components/schemas/" + org.apache.commons.lang.StringUtils.substringBefore(paramType, " "));
 			result = true;
 		}
 		return result;

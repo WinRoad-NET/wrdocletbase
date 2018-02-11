@@ -716,11 +716,21 @@ public abstract class AbstractDocBuilder {
 					strBuilder.append("]");
 					return strBuilder.toString();
 				} else if (!ignoreSuperType && !this.isInStopClasses(superClass)) {
-					return typeToProcess.asClassDoc().toString() + " extends "
-							+ this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
+					if(typeToProcess.qualifiedTypeName().equals("T") //e.g. class BankAlliance<T extends Bank> extends BaseAlliance
+							|| "[]".equals(typeToProcess.dimension()) // e.g. Clazz[] relatedClasses
+							) {
+						return typeToProcess.toString() + " extends "
+								+ this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
+					} else {
+						return typeToProcess.asClassDoc().toString() + " extends "
+								+ this.getTypeName(typeToProcess.asClassDoc().superclassType(), false);
+					}
 				}
 			}
-			if(typeToProcess.qualifiedTypeName().equals("T")) {
+
+			if(typeToProcess.qualifiedTypeName().equals("T") //e.g. class BankAlliance<T extends Bank> extends BaseAlliance
+					|| "[]".equals(typeToProcess.dimension()) // e.g. Clazz[] relatedClasses
+					) {
 				return typeToProcess.toString();
 			} else {
 				return typeToProcess.asClassDoc().toString();
