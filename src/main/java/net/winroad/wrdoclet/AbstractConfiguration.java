@@ -20,6 +20,21 @@ public abstract class AbstractConfiguration extends Configuration {
 	public String excludedurlsxpath = "";
 
 	/**
+	 * Argument for command line option "-showannotationlist".
+	 */
+	public String showAnnotationList = "";
+
+	/**
+	 * Argument for command line option "-authkeyword".
+	 */
+	public String authKeyword = "";
+
+	/**
+	 * Argument for command line option "-noauthkeyword".
+	 */
+	public String noAuthKeyword = "";
+
+	/**
 	 * Argument for command line option "-branchname".
 	 */
 	@edu.umd.cs.findbugs.annotations.SuppressWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")

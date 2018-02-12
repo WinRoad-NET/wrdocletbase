@@ -23,6 +23,7 @@ public class OpenAPI {
 	private List<APIParameter> inParameters = new LinkedList<APIParameter>();
 	private String qualifiedName;
 	private int authNeeded;
+	private String remark;
 	private Set<String> tags = new HashSet<String>();
 	private boolean deprecated = false;
 	
@@ -149,6 +150,14 @@ public class OpenAPI {
 
 	public void setBrief(String brief) {
 		this.brief = brief;
+	}
+
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
 	}
 
 	public boolean isDeprecated() {

@@ -16,6 +16,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import net.winroad.wrdoclet.AbstractConfiguration;
 import net.winroad.wrdoclet.data.*;
 import net.winroad.wrdoclet.taglets.WRBriefTaglet;
 import net.winroad.wrdoclet.taglets.WRMemoTaglet;
@@ -61,6 +62,8 @@ public abstract class AbstractDocBuilder {
 
 	protected Map<String, Set<ClassDoc>> taggedOpenAPIClasses = new HashMap<String, Set<ClassDoc>>();
 
+	protected Set<String> annotationSetToShow = new HashSet<>();
+
 	public AbstractDocBuilder(WRDoc wrDoc) {
 		this.wrDoc = wrDoc;
 		this.logger = LoggerFactory.getLogger(this.getClass());
@@ -89,9 +92,19 @@ public abstract class AbstractDocBuilder {
 	}
 
 	public void buildWRDoc() {
+		this.processShowAnnotationList(this.wrDoc.getConfiguration());
 		this.processOpenAPIClasses(this.wrDoc.getConfiguration().root.classes(), this.wrDoc.getConfiguration());
 		this.buildOpenAPIs(this.wrDoc.getConfiguration());
 		this.buildOpenAPIByClasses(this.wrDoc.getConfiguration());
+	}
+
+	protected void processShowAnnotationList(Configuration configuration) {
+		String showAnnotationList = ((AbstractConfiguration) configuration).showAnnotationList;
+		if(!org.springframework.util.StringUtils.isEmpty(showAnnotationList)) {
+			for(String annotation : showAnnotationList.split(",")) {
+				annotationSetToShow.add(annotation);
+			}
+		}
 	}
 
 	protected abstract void processOpenAPIClasses(ClassDoc[] classDocs, Configuration configuration);
@@ -244,15 +257,52 @@ public abstract class AbstractDocBuilder {
 
 				openAPI.setModificationHistory(this.getModificationHistory(methodDoc));
 				openAPI.setRequestMapping(this.parseRequestMapping(methodDoc));
-				if (openAPI.getRequestMapping() != null) {
+				openAPI.setAuthNeeded(this.isAuthNeededByAnnotation(methodDoc));
+				if (openAPI.getRequestMapping() != null && openAPI.getAuthNeeded() == -1) {
 					openAPI.setAuthNeeded(this.isAPIAuthNeeded(openAPI.getRequestMapping().getUrl()));
 				}
 				openAPI.addInParameters(this.getInputParams(methodDoc));
 				openAPI.setOutParameter(this.getOutputParam(methodDoc));
 				openAPI.setReturnCode(this.getReturnCode(methodDoc));
+				openAPI.setRemark(this.getRemark(methodDoc));
 				this.wrDoc.getTaggedOpenAPIs().get(tagName).add(openAPI);
 			}
 		}
+	}
+
+	protected int isAuthNeededByAnnotation(MethodDoc methodDoc) {
+		String authKeyword = ((AbstractConfiguration)this.wrDoc.getConfiguration()).authKeyword;
+		String noAuthKeyword = ((AbstractConfiguration)this.wrDoc.getConfiguration()).noAuthKeyword;
+		if(!StringUtils.isBlank(authKeyword) || !StringUtils.isBlank(noAuthKeyword)) {
+			String[] authKeywords = authKeyword.split(",");
+			String[] noAuthKeywords = noAuthKeyword.split(",");
+			AnnotationDesc[] annotations = methodDoc.annotations();
+			for (int i = 0; i < annotations.length; i++) {
+				for(String keyword : authKeywords) {
+					if (annotations[i].toString().contains(keyword)) {
+						return 1;
+					}
+				}
+				for(String keyword : noAuthKeywords) {
+					if (annotations[i].toString().contains(keyword)) {
+						return 0;
+					}
+				}
+			}
+		}
+		return -1;
+	}
+
+	protected String getRemark(MethodDoc methodDoc) {
+		StringBuilder stringBuilder = new StringBuilder();
+		AnnotationDesc[] annotations = methodDoc.annotations();
+		for (int i = 0; i < annotations.length; i++) {
+			if (this.annotationSetToShow.contains(annotations[i].annotationType().qualifiedTypeName())) {
+				stringBuilder.append(this.getSimpleAnnotationStr(annotations[i]));
+				stringBuilder.append(",");
+			}
+		}
+		return org.springframework.util.StringUtils.trimTrailingCharacter(stringBuilder.toString(),',');
 	}
 
 	/**
@@ -649,29 +699,35 @@ public abstract class AbstractDocBuilder {
 		return null;
 	}
 
+	protected String getSimpleAnnotationStr(AnnotationDesc annotationDesc) {
+		StringBuilder strBuilder = new StringBuilder();
+		strBuilder.append("@");
+		strBuilder.append(annotationDesc.annotationType().name());
+		if (annotationDesc.elementValues().length > 0) {
+			strBuilder.append("(");
+			boolean isFirstElement = true;
+			for (AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
+				if (!isFirstElement) {
+					strBuilder.append(",");
+				}
+				strBuilder.append(elementValuePair.element().name());
+				strBuilder.append("=");
+				strBuilder.append(
+						net.winroad.wrdoclet.utils.Util.decodeUnicode(elementValuePair.value().toString()));
+				isFirstElement = false;
+			}
+			strBuilder.append(")");
+		}
+		return strBuilder.toString();
+	}
+
 	protected String getFieldValidatorDesc(FieldDoc fieldDoc) {
 		StringBuilder strBuilder = new StringBuilder();
 		for (AnnotationDesc annotationDesc : fieldDoc.annotations()) {
 			if (annotationDesc.annotationType().qualifiedTypeName().startsWith("org.hibernate.validator.constraints")
 					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("javax.validation.constraints")
 					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("lombok.NonNull")) {
-				strBuilder.append("@");
-				strBuilder.append(annotationDesc.annotationType().name());
-				if (annotationDesc.elementValues().length > 0) {
-					strBuilder.append("(");
-					boolean isFirstElement = true;
-					for (AnnotationDesc.ElementValuePair elementValuePair : annotationDesc.elementValues()) {
-						if (!isFirstElement) {
-							strBuilder.append(",");
-						}
-						strBuilder.append(elementValuePair.element().name());
-						strBuilder.append("=");
-						strBuilder.append(
-								net.winroad.wrdoclet.utils.Util.decodeUnicode(elementValuePair.value().toString()));
-						isFirstElement = false;
-					}
-					strBuilder.append(")");
-				}
+				strBuilder.append(this.getSimpleAnnotationStr(annotationDesc));
 				strBuilder.append(" ");
 			}
 		}
