@@ -1,10 +1,7 @@
 package net.winroad.wrdoclet;
 
 import net.winroad.wrdoclet.OASV3.*;
-import net.winroad.wrdoclet.data.APIParameter;
-import net.winroad.wrdoclet.data.OpenAPI;
-import net.winroad.wrdoclet.data.ParameterOccurs;
-import net.winroad.wrdoclet.data.WRDoc;
+import net.winroad.wrdoclet.data.*;
 
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.LanguageVersion;
@@ -181,13 +178,34 @@ public abstract class AbstractDoclet {
 		OASV3.setTags(tags);
 	}
 
+	private RequestBody convertRequestBody(APIParameter apiParameter, HashMap<String, Schema> componentSchemas) {
+		RequestBody requestBody = new RequestBody();
+		requestBody.setDescription(apiParameter.getDescription());
+		requestBody.setRequired(ParameterOccurs.REQUIRED.equals(apiParameter.getParameterOccurs()));
+		HashMap<String, MediaType> content = new HashMap<>();
+		MediaType mediaType = new MediaType();
+		content.put("application/json", mediaType);
+		Schema schema = new Schema();
+		mediaType.setSchema(schema);
+		if(setSchemaType(apiParameter.getType(), schema)) {
+			this.convertToComponentSchema(apiParameter, componentSchemas);
+		}
+		requestBody.setContent(content);
+		return requestBody;
+	}
+
 	private void processPaths(OpenAPI openAPI, OASV3 OASV3, HashMap<String, Schema> componentSchemas) {
 		HashMap<String, PathItem> paths = new HashMap<>();
 		OASV3.setPaths(paths);
+		RequestBody requestBody = null;
 		List<Parameter> parameterList = new LinkedList<>();
 		for(APIParameter apiParameter : openAPI.getInParameters()) {
-			Parameter parameter = convertParameter(apiParameter, componentSchemas);
-			parameterList.add(parameter);
+			if(ParameterLocation.BODY.equals(apiParameter.getParameterLocation())) {
+				requestBody = this.convertRequestBody(apiParameter, componentSchemas);
+			} else {
+				Parameter parameter = convertParameter(apiParameter, componentSchemas);
+				parameterList.add(parameter);
+			}
 		}
 
 		String methodTypeStr = openAPI.getRequestMapping().getMethodType().toLowerCase();
@@ -198,6 +216,7 @@ public abstract class AbstractDoclet {
 		for(String methodType : methodTypes) {
 			methodType = methodType.trim();
 			Operation operation = new Operation();
+			operation.setRequestBody(requestBody);
 			operation.setTags(new LinkedList<>(openAPI.getTags()));
 			operation.setOperationId(openAPI.getRequestMapping().getUrl() + methodType);
 			HashMap<String, Response> responses = new HashMap<>();

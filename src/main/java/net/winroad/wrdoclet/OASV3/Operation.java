@@ -11,6 +11,6 @@ import java.util.List;
 public class Operation {
     private String operationId;
     private List<String> tags;
-
+    private RequestBody requestBody;
     private HashMap<String, Response> responses;
 }
