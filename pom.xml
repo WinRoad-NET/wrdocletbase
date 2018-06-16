@@ -4,7 +4,7 @@
 
 	<groupId>net.winroad</groupId>
 	<artifactId>wrdocletbase</artifactId>
-	<version>1.2.1</version>
+	<version>1.2.2-SNAPSHOT</version>
 	<name>wrdocletbase</name>
 	<url>https://github.com/WinRoad-NET/wrdocletbase</url>
 	<description>Base module of wrdoclet for supporting multiple versions of jdk.</description>
@@ -36,7 +36,7 @@
 		<connection>scm:git:git@github.com:WinRoad-NET/wrdocletbase.git</connection>
 		<developerConnection>scm:git:git@github.com:WinRoad-NET/wrdocletbase.git</developerConnection>
 		<url>https://github.com/WinRoad-NET/wrdocletbase</url>
-		<tag>wrdocletbase-1.2.1</tag>
+		<tag>HEAD</tag>
 	</scm>
 
 	<issueManagement>
