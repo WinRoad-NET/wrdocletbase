@@ -11,8 +11,9 @@ import com.sun.tools.doclets.internal.toolkit.Configuration;
 import com.sun.tools.doclets.internal.toolkit.builders.AbstractBuilder;
 import com.sun.tools.doclets.internal.toolkit.builders.BuilderFactory;
 import com.sun.tools.doclets.internal.toolkit.util.ClassTree;
+
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -361,4 +362,25 @@ public abstract class AbstractDoclet {
 					classtree);
 		}
 	}
+	
+	protected String generateWRAPIFileName(RequestMapping requestMapping) {
+		return StringUtils.strip(
+				(requestMapping.getContainerName() + '-' + requestMapping.getUrl() 
+					+ (requestMapping.getMethodType() == null ? '-'
+						: '-' + requestMapping.getMethodType() + '-')
+					+ (requestMapping.getHeaders() == null ? '-'
+							: '-' + requestMapping.getHeaders() + '-')
+					+ (requestMapping.getParams() == null ? '-'
+							: '-' + requestMapping.getParams() + '-')
+					+ (requestMapping.getConsumes() == null ? '-'
+							: '-' + requestMapping.getConsumes() + '-')
+				).replace('/', '-')
+						.replace('\\', '-').replace(':', '-').replace('*', '-')
+						.replace('?', '-').replace('"', '-').replace('<', '-')
+						.replace('>', '-').replace('|', '-').replace('{', '-')
+						.replace('}', '-'), "-")
+				+ ".html";
+		
+	}
+		
 }

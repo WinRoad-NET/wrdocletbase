@@ -191,22 +191,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 		for (int i = 0; i < annotations.length; i++) {
 			if (annotations[i].annotationType().name().equals("RequestMapping")) {
 				requestMapping = new RequestMapping();
-				for (int j = 0; j < annotations[i].elementValues().length; j++) {
-					if ("value".equals(annotations[i].elementValues()[j]
-							.element().name())) {
-						String url = annotations[i].elementValues()[j].value()
-								.toString().replace("\"", "");
-						requestMapping.setUrl(url);
-					} else if ("method"
-							.equals(annotations[i].elementValues()[j].element()
-									.name())) {
-						requestMapping
-								.setMethodType(this
-										.convertMethodType(annotations[i]
-												.elementValues()[j].value()
-												.toString()));
-					}
-				}
+				setRequestMappingAttrs(requestMapping, annotations[i]);
 				break;
 			} else if (annotations[i].annotationType().name().equals("PostMapping")
 					|| annotations[i].annotationType().name().equals("GetMapping")
@@ -214,15 +199,8 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 					|| annotations[i].annotationType().name().equals("PutMapping")
 					|| annotations[i].annotationType().name().equals("PatchMapping")) {
 				requestMapping = new RequestMapping();
-				for (int j = 0; j < annotations[i].elementValues().length; j++) {
-					if ("value".equals(annotations[i].elementValues()[j]
-							.element().name())) {
-						String url = annotations[i].elementValues()[j].value()
-								.toString().replace("\"", "");
-						requestMapping.setUrl(url);
-						requestMapping.setMethodType(annotations[i].annotationType().name().replace("Mapping","").toUpperCase());
-					}
-				}
+				requestMapping.setMethodType(annotations[i].annotationType().name().replace("Mapping","").toUpperCase());
+				setRequestMappingAttrs(requestMapping, annotations[i]);
 				break;
 			}else if(annotations[i].annotationType().name().equals("Path")){
 				if(requestMapping == null) {
@@ -236,6 +214,9 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 						requestMapping.setUrl(url);
 					}
 				}
+				if(requestMapping.getUrl() == null) {
+					requestMapping.setUrl("");
+				}
 			} else if(annotations[i].annotationType().name().equals("GET")
 					||annotations[i].annotationType().name().equals("POST")){
 				if(requestMapping == null) {
@@ -245,6 +226,58 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 			}
 		}
 		return requestMapping;
+	}
+
+	private void setRequestMappingAttrs(RequestMapping requestMapping, AnnotationDesc annotation) {
+		for (int j = 0; j < annotation.elementValues().length; j++) {
+			if ("value".equals(annotation.elementValues()[j]
+					.element().name()) 
+					|| "path".equals(annotation.elementValues()[j]
+							.element().name())) {
+				String url = annotation.elementValues()[j].value()
+						.toString().replace("\"", "");
+				requestMapping.setUrl(url);
+			} else if ("method"
+					.equals(annotation.elementValues()[j].element()
+							.name())) {
+				requestMapping
+						.setMethodType(this
+								.convertMethodType(annotation
+										.elementValues()[j].value()
+										.toString()));
+			} else if ("params"
+					.equals(annotation.elementValues()[j].element()
+							.name())) {
+				requestMapping
+						.setParams(annotation
+										.elementValues()[j].value()
+										.toString().replace("\"", ""));
+			} else if ("headers"
+					.equals(annotation.elementValues()[j].element()
+							.name())) {
+				requestMapping
+						.setHeaders(annotation
+										.elementValues()[j].value()
+										.toString().replace("\"", ""));
+			} else if ("consumes"
+					.equals(annotation.elementValues()[j].element()
+							.name())) {
+				requestMapping
+						.setConsumes(annotation
+										.elementValues()[j].value()
+										.toString().replace("\"", ""));
+			} else if ("produces"
+					.equals(annotation.elementValues()[j].element()
+							.name())) {
+				requestMapping
+						.setProduces(annotation
+										.elementValues()[j].value()
+										.toString().replace("\"", ""));
+			}
+		}
+		if(requestMapping.getUrl() == null) {
+			requestMapping.setUrl("");
+		}
 	}
 
 	private RequestMapping parseRequestMapping(Tag tag) {
