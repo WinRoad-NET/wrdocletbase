@@ -408,6 +408,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				buf.append(" ");
 			}
 			apiParameter.setDescription(buf.toString());
+			apiParameter.setExample(this.getExample(method, parameters[i]));
 			paramList.add(apiParameter);
 		}
 

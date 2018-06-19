@@ -123,6 +123,7 @@ public class SOAPDocBuilder extends AbstractServiceDocBuilder {
 				HashSet<String> processingClasses = new HashSet<String>();
 				p.setFields(this.getFields(methodParameters[i].type(),
 						ParameterType.Request, processingClasses));
+				p.setExample(this.getExample(method, methodParameters[i]));
 				paramList.add(p);
 			}
 		}

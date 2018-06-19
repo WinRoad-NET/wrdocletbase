@@ -244,6 +244,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 				buf.append(" ");
 			}
 			apiParameter.setDescription(buf.toString());
+			apiParameter.setExample(this.getExample(method, parameters[i]));
 			paramList.add(apiParameter);
 		}
 

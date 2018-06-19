@@ -3,6 +3,8 @@ package net.winroad.wrdoclet.builder;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.AbstractMap;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -19,6 +21,11 @@ import javax.xml.parsers.ParserConfigurationException;
 import net.winroad.wrdoclet.AbstractConfiguration;
 import net.winroad.wrdoclet.data.*;
 import net.winroad.wrdoclet.taglets.WRBriefTaglet;
+import net.winroad.wrdoclet.taglets.WREgdescriptionTaglet;
+import net.winroad.wrdoclet.taglets.WREgexternalvalueTaglet;
+import net.winroad.wrdoclet.taglets.WREgnameTaglet;
+import net.winroad.wrdoclet.taglets.WREgsummaryTaglet;
+import net.winroad.wrdoclet.taglets.WREgvalueTaglet;
 import net.winroad.wrdoclet.taglets.WRMemoTaglet;
 import net.winroad.wrdoclet.taglets.WRMqConsumerTaglet;
 import net.winroad.wrdoclet.taglets.WRMqProducerTaglet;
@@ -45,6 +52,7 @@ import com.sun.javadoc.FieldDoc;
 import com.sun.javadoc.MemberDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.ParamTag;
+import com.sun.javadoc.Parameter;
 import com.sun.javadoc.ParameterizedType;
 import com.sun.javadoc.ProgramElementDoc;
 import com.sun.javadoc.Tag;
@@ -560,8 +568,9 @@ public abstract class AbstractDocBuilder {
 
 		FieldDoc[] fieldDocs = classDoc.fields(false);
 		HashMap<String, String> privateFieldValidator = new HashMap<>();
-		HashMap<String, String> privateFieldDesc = new HashMap<String, String>();
-		HashMap<String, String> privateJsonField = new HashMap<String, String>();
+		HashMap<String, String> privateFieldDesc = new HashMap<>();
+		HashMap<String, Example> privateFieldExample = new HashMap<>();
+		HashMap<String, String> privateJsonField = new HashMap<>();
 		Set<String> transientFieldSet = new HashSet<>();
 
 		for (FieldDoc fieldDoc : fieldDocs) {
@@ -578,11 +587,16 @@ public abstract class AbstractDocBuilder {
 					param.setFields(this.getFields(fieldDoc.type(), paramType, processingClasses));
 				}
 				param.setDescription(this.getFieldDescription(fieldDoc));
+				param.setExample(this.getMemberExample(fieldDoc));
 				param.setHistory(new ModificationHistory(this.parseModificationRecords(fieldDoc.tags())));
 				param.setParameterOccurs(this.parseParameterOccurs(fieldDoc.tags(WROccursTaglet.NAME)));
 				result.add(param);
 			} else {
 				privateFieldDesc.put(fieldDoc.name(), fieldDoc.commentText());
+				Example example = this.getMemberExample(fieldDoc);
+				if (example != null) {
+					privateFieldExample.put(fieldDoc.name(), example);			
+				}
 				String jsonField = this.getJsonField(fieldDoc);
 				if (jsonField != null) {
 					privateJsonField.put(fieldDoc.name(), jsonField);
@@ -654,6 +668,14 @@ public abstract class AbstractDocBuilder {
 							: param.getDescription() + " " + privateFieldValidator.get(fieldNameOfAccesser));
 				}
 
+				Example example = this.getMemberExample(methodDoc);
+				if (example == null) {
+					if(privateFieldExample.containsKey(param.getName())) {
+						param.setExample(privateFieldExample.get(param.getName()));
+					}
+				} else {
+					param.setExample(example);
+				}
 				param.setParameterOccurs(this.parseParameterOccurs(methodDoc.tags(WROccursTaglet.NAME)));
 				result.add(param);
 			}
@@ -669,6 +691,92 @@ public abstract class AbstractDocBuilder {
 		return strBuilder.toString();
 	}
 
+	protected SimpleEntry<String, String> parseParamTag(String text) {
+		text = StringUtils.strip(text);
+		int index = text.indexOf(" ");
+		if (index > 0) {
+			String paramName = text.substring(0, index);
+			String comment = text.substring(index);
+			SimpleEntry<String, String> result = new AbstractMap.SimpleEntry<String, String>(
+					paramName, StringUtils.strip(comment));
+			return result;			
+		}
+		return null;
+	}
+	
+	protected Example getExample(MethodDoc methodDoc, Parameter parameter) {
+		Example result = new Example();
+		boolean hasExample = false;
+		for(Tag tag : methodDoc.tags(WREgnameTaglet.NAME)) {
+			SimpleEntry<String, String> p = this.parseParamTag(tag.text());
+			if (p != null && parameter.name().equals(p.getKey())) {
+				result.setName(p.getValue());
+				hasExample = true;
+			}
+		}
+		for(Tag tag : methodDoc.tags(WREgsummaryTaglet.NAME)) {
+			SimpleEntry<String, String> p = this.parseParamTag(tag.text());
+			if (p != null && parameter.name().equals(p.getKey())) {
+				result.setSummary(p.getValue());
+				hasExample = true;
+			}
+		}
+		for(Tag tag : methodDoc.tags(WREgvalueTaglet.NAME)) {
+			SimpleEntry<String, String> p = this.parseParamTag(tag.text());
+			if (p != null && parameter.name().equals(p.getKey())) {
+				result.setValue(p.getValue());
+				hasExample = true;
+			}
+		}
+		for(Tag tag : methodDoc.tags(WREgexternalvalueTaglet.NAME)) {
+			SimpleEntry<String, String> p = this.parseParamTag(tag.text());
+			if (p != null && parameter.name().equals(p.getKey())) {
+				result.setExternalValue(p.getValue());
+				hasExample = true;
+			}
+		}
+		for(Tag tag : methodDoc.tags(WREgdescriptionTaglet.NAME)) {
+			SimpleEntry<String, String> p = this.parseParamTag(tag.text());
+			if (p != null && parameter.name().equals(p.getKey())) {
+				result.setDescription(p.getValue());
+				hasExample = true;
+			}
+		}
+		if(hasExample) {
+			return result;
+		}
+		return null;
+	}
+	
+	protected Example getMemberExample(MemberDoc memberDoc) {
+		Example result = new Example();
+		boolean hasExample = false;
+		for(Tag tag : memberDoc.tags(WREgnameTaglet.NAME)) {
+			result.setName(tag.text());
+			hasExample = true;
+		}
+		for(Tag tag : memberDoc.tags(WREgsummaryTaglet.NAME)) {
+			result.setSummary(tag.text());
+			hasExample = true;
+		}
+		for(Tag tag : memberDoc.tags(WREgvalueTaglet.NAME)) {
+			result.setValue(tag.text());
+			hasExample = true;
+		}
+		for(Tag tag : memberDoc.tags(WREgexternalvalueTaglet.NAME)) {
+			result.setExternalValue(tag.text());
+			hasExample = true;
+		}
+		for(Tag tag : memberDoc.tags(WREgdescriptionTaglet.NAME)) {
+			result.setDescription(tag.text());
+			hasExample = true;
+		}
+		if(hasExample) {
+			return result;
+		}
+		return null;
+	}
+	
 	protected String getJsonField(MemberDoc memberDoc) {
 		for (AnnotationDesc annotationDesc : memberDoc.annotations()) {
 			if (annotationDesc.annotationType().qualifiedTypeName()
