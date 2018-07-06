@@ -41,6 +41,7 @@ import net.winroad.wrdoclet.utils.LoggerFactory;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.util.CollectionUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -72,6 +73,11 @@ public abstract class AbstractDocBuilder {
 
 	protected Set<String> annotationSetToShow = new HashSet<>();
 
+	protected String cmzFieldExcludeAnnotation = "";
+	protected String cmzFieldExcludeAnnoField = "";
+	protected String cmzFieldIncludeAnnotation = "";
+	protected String cmzFieldIncludeAnnoField = "";
+	
 	public AbstractDocBuilder(WRDoc wrDoc) {
 		this.wrDoc = wrDoc;
 		this.logger = LoggerFactory.getLogger(this.getClass());
@@ -100,12 +106,32 @@ public abstract class AbstractDocBuilder {
 	}
 
 	public void buildWRDoc() {
+		this.processSerializeCMZField(this.wrDoc.getConfiguration());
 		this.processShowAnnotationList(this.wrDoc.getConfiguration());
 		this.processOpenAPIClasses(this.wrDoc.getConfiguration().root.classes(), this.wrDoc.getConfiguration());
 		this.buildOpenAPIs(this.wrDoc.getConfiguration());
 		this.buildOpenAPIByClasses(this.wrDoc.getConfiguration());
 	}
 
+	protected void processSerializeCMZField(Configuration configuration) {
+		String include = ((AbstractConfiguration) configuration).cmzFieldInclude;
+		String exclude = ((AbstractConfiguration) configuration).cmzFieldExclude;
+		if(StringUtils.isNotBlank(include)) {
+			int index = include.lastIndexOf('.');
+			if(index > 0) {
+				cmzFieldIncludeAnnotation = include.substring(0, index);
+				cmzFieldIncludeAnnoField = include.substring(index + 1);
+			}
+		}
+		if(StringUtils.isNotBlank(exclude)) {
+			int index = exclude.lastIndexOf('.');
+			if(index > 0) {
+				cmzFieldExcludeAnnotation = exclude.substring(0, index);
+				cmzFieldExcludeAnnoField = exclude.substring(index + 1);
+			}
+		}
+	}
+	
 	protected void processShowAnnotationList(Configuration configuration) {
 		String showAnnotationList = ((AbstractConfiguration) configuration).showAnnotationList;
 		if(!org.springframework.util.StringUtils.isEmpty(showAnnotationList)) {
@@ -513,7 +539,8 @@ public abstract class AbstractDocBuilder {
 		return true;
 	}
 
-	protected List<APIParameter> getFields(Type type, ParameterType paramType, HashSet<String> processingClasses) {
+	protected List<APIParameter> getFields(Type type, ParameterType paramType, HashSet<String> processingClasses, 
+			Set<String> include, Set<String> exclude) {
 		processingClasses.add(type.toString());
 		List<APIParameter> result = new LinkedList<APIParameter>();
 		if (!type.isPrimitive()) {
@@ -521,13 +548,19 @@ public abstract class AbstractDocBuilder {
 			if (pt != null && pt.typeArguments().length > 0) {
 				for (Type arg : pt.typeArguments()) {
 					if (!this.isParameterizedTypeInStopClasses(arg)) {
+						if(!CollectionUtils.isEmpty(include) && !include.contains(arg.simpleTypeName())) {
+							continue;
+						}
+						if(!CollectionUtils.isEmpty(exclude) && exclude.contains(arg.simpleTypeName())) {
+							continue;
+						}
 						APIParameter tmp = new APIParameter();
 						tmp.setName(arg.simpleTypeName());
 						tmp.setType(this.getTypeName(arg, false));
 						tmp.setDescription("");
 						tmp.setParentTypeArgument(true);
 						if (!processingClasses.contains(arg.qualifiedTypeName())) {
-							tmp.setFields(this.getFields(arg, paramType, processingClasses));
+							tmp.setFields(this.getFields(arg, paramType, processingClasses, include, exclude));
 						}
 						result.add(tmp);
 					}
@@ -536,14 +569,14 @@ public abstract class AbstractDocBuilder {
 
 			ClassDoc classDoc = this.wrDoc.getConfiguration().root.classNamed(type.qualifiedTypeName());
 			if (classDoc != null) {
-				result.addAll(this.getFields(classDoc, paramType, processingClasses));
+				result.addAll(this.getFields(classDoc, paramType, processingClasses, include, exclude));
 			}
 		}
 		return result;
 	}
 
 	protected List<APIParameter> getFields(ClassDoc classDoc, ParameterType paramType,
-			HashSet<String> processingClasses) {
+			HashSet<String> processingClasses, Set<String> include, Set<String> exclude) {
 		processingClasses.add(classDoc.toString());
 		List<APIParameter> result = new LinkedList<APIParameter>();
 
@@ -556,16 +589,36 @@ public abstract class AbstractDocBuilder {
 		// todo
 		// this.wrDoc.getConfiguration().root.classNamed(type.qualifiedTypeName()).typeParameters()[0].qualifiedTypeName()
 
+		Set<String> ignoreProperties = new HashSet<>();
+		AnnotationDesc[] annotations = classDoc.annotations();
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().qualifiedTypeName().equals("com.fasterxml.jackson.annotation.JsonIgnoreProperties")) {
+				for(int j = 0; j < annotations[i].elementValues().length; j++) {
+					if("value".equals(annotations[i].elementValues()[j].element().name())) {
+						ignoreProperties = net.winroad.wrdoclet.utils.Util.parseStringSet(annotations[i].elementValues()[j].value().toString());
+					}
+				}
+			}
+		}
+		
 		ClassDoc superClassDoc = classDoc.superclass();
 		if (superClassDoc != null && !this.isInStopClasses(superClassDoc)
 				&& !processingClasses.contains(superClassDoc.qualifiedTypeName())) {
-			result.addAll(this.getFields(superClassDoc, paramType, processingClasses));
+			result.addAll(this.getFields(superClassDoc, paramType, processingClasses, include, exclude));
 		}
 
 		if (this.isInStopClasses(classDoc)) {
 			return result;
 		}
-
+		
+		MethodDoc[] methodDocs = classDoc.methods(false);
+		for (MethodDoc methodDoc : methodDocs) {
+			String fieldNameOfAccesser = this.getFieldNameOfAccesser(methodDoc.name());
+			if(this.isProgramElementDocAnnotatedWith(methodDoc, "com.fasterxml.jackson.annotation.JsonIgnore")) {
+				ignoreProperties.add(fieldNameOfAccesser);
+			}
+		}
+		
 		FieldDoc[] fieldDocs = classDoc.fields(false);
 		HashMap<String, String> privateFieldValidator = new HashMap<>();
 		HashMap<String, String> privateFieldDesc = new HashMap<>();
@@ -574,6 +627,16 @@ public abstract class AbstractDocBuilder {
 		Set<String> transientFieldSet = new HashSet<>();
 
 		for (FieldDoc fieldDoc : fieldDocs) {
+			if( ignoreProperties.contains(fieldDoc.name()) 
+					|| this.isProgramElementDocAnnotatedWith(fieldDoc, "com.fasterxml.jackson.annotation.JsonIgnore")) {
+				continue;
+			}
+			if( !CollectionUtils.isEmpty(include) && !include.contains(fieldDoc.name())) {
+				continue;
+			}
+			if( !CollectionUtils.isEmpty(exclude) && exclude.contains(fieldDoc.name())) {
+				continue;
+			}
 			if (!fieldDoc.isTransient() && !fieldDoc.isStatic()
 					&& (fieldDoc.isPublic() || isLomBokClass
 							|| (this.isProgramElementDocAnnotatedWith(fieldDoc, "lombok.Getter")
@@ -584,7 +647,7 @@ public abstract class AbstractDocBuilder {
 				param.setName(fieldDoc.name());
 				param.setType(this.getTypeName(fieldDoc.type(), false));
 				if (!processingClasses.contains(fieldDoc.type().qualifiedTypeName())) {
-					param.setFields(this.getFields(fieldDoc.type(), paramType, processingClasses));
+					param.setFields(this.getFields(fieldDoc.type(), paramType, processingClasses, include, exclude));
 				}
 				param.setDescription(this.getFieldDescription(fieldDoc));
 				param.setExample(this.getMemberExample(fieldDoc));
@@ -608,15 +671,21 @@ public abstract class AbstractDocBuilder {
 			}
 		}
 
-		MethodDoc[] methodDocs = classDoc.methods(false);
 		for (MethodDoc methodDoc : methodDocs) {
-			if (transientFieldSet.contains(this.getFieldNameOfAccesser(methodDoc.name()))) {
+			String fieldNameOfAccesser = this.getFieldNameOfAccesser(methodDoc.name());
+			if (transientFieldSet.contains(fieldNameOfAccesser) 
+					|| ignoreProperties.contains(fieldNameOfAccesser)) {
 				continue;
 			}
 			if ((paramType == ParameterType.Response && this.isGetterMethod(methodDoc))
 					|| (paramType == ParameterType.Request && this.isSetterMethod(methodDoc))) {
 				APIParameter param = new APIParameter();
-				String fieldNameOfAccesser = this.getFieldNameOfAccesser(methodDoc.name());
+				if( !CollectionUtils.isEmpty(include) && !include.contains(fieldNameOfAccesser)) {
+					continue;
+				}
+				if( !CollectionUtils.isEmpty(exclude) && exclude.contains(fieldNameOfAccesser)) {
+					continue;
+				}
 				param.setName(fieldNameOfAccesser);
 				String jsonField = this.getJsonField(methodDoc);
 				if (jsonField != null) {
@@ -633,7 +702,7 @@ public abstract class AbstractDocBuilder {
 				}
 				param.setType(this.getTypeName(typeToProcess, false));
 				if (!processingClasses.contains(typeToProcess.qualifiedTypeName())) {
-					param.setFields(this.getFields(typeToProcess, paramType, processingClasses));
+					param.setFields(this.getFields(typeToProcess, paramType, processingClasses, include, exclude));
 				}
 				param.setHistory(new ModificationHistory(this.parseModificationRecords(methodDoc.tags())));
 				if (StringUtils.isEmpty(methodDoc.commentText())) {
@@ -1043,7 +1112,7 @@ public abstract class AbstractDocBuilder {
 			HashSet<String> processingClasses = new HashSet<String>();
 			ClassDoc c = this.wrDoc.getConfiguration().root.classNamed(apiParameter.getType());
 			if (c != null) {
-				apiParameter.setFields(this.getFields(c, ParameterType.Request, processingClasses));
+				apiParameter.setFields(this.getFields(c, ParameterType.Request, processingClasses, null, null));
 			}
 			paramList.add(apiParameter);
 		}

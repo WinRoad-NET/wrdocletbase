@@ -72,7 +72,7 @@ public class SOAPDocBuilder extends AbstractServiceDocBuilder {
 			}
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(method.returnType(),
-					ParameterType.Response, processingClasses));
+					ParameterType.Response, processingClasses, null, null));
 			apiParameter.setHistory(this.getModificationHistory(method
 					.returnType()));
 		}
@@ -122,7 +122,7 @@ public class SOAPDocBuilder extends AbstractServiceDocBuilder {
 				p.setDescription(this.getParamComment(method, methodParameters[i].name()));
 				HashSet<String> processingClasses = new HashSet<String>();
 				p.setFields(this.getFields(methodParameters[i].type(),
-						ParameterType.Request, processingClasses));
+						ParameterType.Request, processingClasses, null, null));
 				p.setExample(this.getExample(method, methodParameters[i]));
 				paramList.add(p);
 			}

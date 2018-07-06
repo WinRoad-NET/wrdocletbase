@@ -64,6 +64,18 @@ public abstract class AbstractConfiguration extends Configuration {
 	@edu.umd.cs.findbugs.annotations.SuppressWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
 	public String buildid = "";
 
+	/**
+	 * Argument for command line option "-cmzfieldinclude".
+	 */
+	@edu.umd.cs.findbugs.annotations.SuppressWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
+	public String cmzFieldInclude = "";
+	
+	/**
+	 * Argument for command line option "-cmzfieldexclude".
+	 */
+	@edu.umd.cs.findbugs.annotations.SuppressWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
+	public String cmzFieldExclude = "";
+	
 	@edu.umd.cs.findbugs.annotations.SuppressWarnings("MS_SHOULD_BE_FINAL")
 	protected static AbstractConfiguration instance;
 	

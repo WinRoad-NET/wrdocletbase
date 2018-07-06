@@ -189,7 +189,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			}
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(methodDoc.returnType(),
-					ParameterType.Response, processingClasses));
+					ParameterType.Response, processingClasses, null, null));
 			apiParameter.setHistory(this.getModificationHistory(methodDoc
 					.returnType()));
 		}
@@ -214,7 +214,7 @@ public class DubboDocBuilder extends AbstractServiceDocBuilder {
 			apiParameter.setName(parameters[i].name());
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(parameters[i].type(),
-					ParameterType.Request, processingClasses));
+					ParameterType.Request, processingClasses, null, null));
 			apiParameter.setHistory(this
 					.getModificationHistory(parameters[i].type()));
 			StringBuffer buf = new StringBuffer();

@@ -5,10 +5,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -247,8 +248,21 @@ public class Util {
         return outBuffer.toString();
     }
     
+    public static Set<String> parseStringSet(String str) {
+    	str = StringUtils.strip(str, "{} ");
+    	String[] arr = str.split(",");
+    	Set<String> result = new HashSet<>();
+    	for(String s : arr) {
+    		result.add(StringUtils.strip(s, "\" "));
+    	}
+    	return result;
+    }
+    
 	public static void main(String[] args) {
 		String str="sno \\u5b66\\u53f7 should not be empty"; 		
 		System.out.println(decodeUnicode(str));
+		
+		String strs = "{\"aaa\", \"bb\"}";
+		System.out.println(parseStringSet(strs));
 	}
 }

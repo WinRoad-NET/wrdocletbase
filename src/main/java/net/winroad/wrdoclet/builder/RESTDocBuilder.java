@@ -23,6 +23,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
 import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * @author AdamsLee NOTE: WRDoc cannot cover API which returning objects whose
@@ -318,8 +319,10 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				apiParameter.setDescription(tag.text());
 			}
 			HashSet<String> processingClasses = new HashSet<String>();
+			Entry<Set<String>, Set<String>> includeExcludeSet = this.parseIncludeExclude(method);
 			apiParameter.setFields(this.getFields(method.returnType(),
-					ParameterType.Response, processingClasses));
+					ParameterType.Response, processingClasses, 
+					includeExcludeSet.getKey(), includeExcludeSet.getValue()));
 			apiParameter.setHistory(this.getModificationHistory(method
 					.returnType()));
 		}
@@ -328,6 +331,28 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 		return apiParameter;
 	}
 
+	private Entry<Set<String>, Set<String>> parseIncludeExclude(MethodDoc method) {
+		Set<String> include = null, exclude = null;
+		AnnotationDesc[] annotations = method.annotations();
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().qualifiedTypeName().equals(this.cmzFieldExcludeAnnotation)) {
+				for (int j = 0; j< annotations[i].elementValues().length; j++) {
+					if(cmzFieldExcludeAnnoField.equals(annotations[i].elementValues()[j].element().name())) {
+						exclude = net.winroad.wrdoclet.utils.Util.parseStringSet(annotations[i].elementValues()[j].value().toString());
+					}
+				}
+			}
+			if (annotations[i].annotationType().qualifiedTypeName().equals(this.cmzFieldIncludeAnnotation)) {
+				for (int j = 0; j< annotations[i].elementValues().length; j++) {
+					if(cmzFieldIncludeAnnoField.equals(annotations[i].elementValues()[j].element().name())) {
+						include = net.winroad.wrdoclet.utils.Util.parseStringSet(annotations[i].elementValues()[j].value().toString());
+					}
+				}
+			}				
+		}
+		return new AbstractMap.SimpleEntry<Set<String>, Set<String>>(include, exclude);	
+	}
+	
 	private APIParameter handleRefResp(MethodDoc method,
 			APIParameter apiParameter) {
 		if (apiParameter == null) {
@@ -340,8 +365,10 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 				ClassDoc c = this.wrDoc.getConfiguration().root
 						.classNamed(apiParameter.getType());
 				if (c != null) {
+					Entry<Set<String>, Set<String>> includeExcludeSet = this.parseIncludeExclude(method);
 					apiParameter.setFields(this.getFields(c,
-							ParameterType.Response, processingClasses));
+							ParameterType.Response, processingClasses, 
+							includeExcludeSet.getKey(), includeExcludeSet.getValue()));
 				}
 			}
 		}
@@ -377,7 +404,7 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(parameters[i].type(),
-					ParameterType.Request, processingClasses));
+					ParameterType.Request, processingClasses, null, null));
 			apiParameter.setHistory(this
 					.getModificationHistory(parameters[i].type()));
 			StringBuffer buf = new StringBuffer();

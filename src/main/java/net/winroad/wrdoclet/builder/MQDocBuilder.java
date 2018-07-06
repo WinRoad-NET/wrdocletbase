@@ -122,7 +122,7 @@ public class MQDocBuilder extends AbstractDocBuilder {
 			apiParameter.setName(classDoc.name());
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(classDoc,
-					ParameterType.Response, processingClasses));
+					ParameterType.Response, processingClasses, null, null));
 			apiParameter.setDescription(classDoc.commentText());
 			return apiParameter;
 		}
@@ -137,7 +137,7 @@ public class MQDocBuilder extends AbstractDocBuilder {
 			apiParameter.setName(classDoc.name());
 			HashSet<String> processingClasses = new HashSet<String>();
 			apiParameter.setFields(this.getFields(classDoc,
-					ParameterType.Request, processingClasses));
+					ParameterType.Request, processingClasses, null, null));
 			apiParameter.setDescription(classDoc.commentText());
 			return apiParameter;
 		} else {
