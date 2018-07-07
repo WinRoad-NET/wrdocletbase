@@ -288,14 +288,26 @@ public class RESTDocBuilder extends AbstractDocBuilder {
 			int index = tag.text().indexOf(" ");
 			if (index > 0) {
 				String methodType = tag.text().substring(0, index);
-				String url = tag.text().substring(index + 1);
-				requestMapping.setMethodType(methodType);
-				requestMapping.setUrl(url);
+				if(isValidMethodType(methodType)) {
+					String url = tag.text().substring(index + 1);
+					requestMapping.setMethodType(methodType);
+					requestMapping.setUrl(url);
+				} else {
+					requestMapping.setUrl(tag.text());
+				}
 			} else {
 				requestMapping.setUrl(tag.text());
 			}
 		}
 		return requestMapping;
+	}
+	
+	private boolean isValidMethodType(String str) {
+		return "get".equalsIgnoreCase(str) 
+				|| "post".equalsIgnoreCase(str) 
+				|| "put".equalsIgnoreCase(str) 
+				|| "patch".equalsIgnoreCase(str) 
+				|| "delete".equalsIgnoreCase(str);
 	}
 
 	/*
