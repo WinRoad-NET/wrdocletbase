@@ -664,7 +664,7 @@ public abstract class AbstractDocBuilder {
 				if (jsonField != null) {
 					privateJsonField.put(fieldDoc.name(), jsonField);
 				}
-				privateFieldValidator.put(fieldDoc.name(), this.getFieldValidatorDesc(fieldDoc));
+				privateFieldValidator.put(fieldDoc.name(), this.getFieldValidatorSerializeDesc(fieldDoc));
 				if (fieldDoc.isTransient()) {
 					transientFieldSet.add(fieldDoc.name());
 				}
@@ -756,7 +756,7 @@ public abstract class AbstractDocBuilder {
 		StringBuilder strBuilder = new StringBuilder();
 		strBuilder.append(fieldDoc.commentText());
 		strBuilder.append(" ");
-		strBuilder.append(this.getFieldValidatorDesc(fieldDoc));
+		strBuilder.append(this.getFieldValidatorSerializeDesc(fieldDoc));
 		return strBuilder.toString();
 	}
 
@@ -898,12 +898,13 @@ public abstract class AbstractDocBuilder {
 		return strBuilder.toString();
 	}
 
-	protected String getFieldValidatorDesc(FieldDoc fieldDoc) {
+	protected String getFieldValidatorSerializeDesc(FieldDoc fieldDoc) {
 		StringBuilder strBuilder = new StringBuilder();
 		for (AnnotationDesc annotationDesc : fieldDoc.annotations()) {
 			if (annotationDesc.annotationType().qualifiedTypeName().startsWith("org.hibernate.validator.constraints")
 					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("javax.validation.constraints")
-					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("lombok.NonNull")) {
+					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("lombok.NonNull")
+					|| annotationDesc.annotationType().qualifiedTypeName().startsWith("com.fasterxml.jackson.annotation.JsonInclude")) {
 				strBuilder.append(this.getSimpleAnnotationStr(annotationDesc));
 				strBuilder.append(" ");
 			}
