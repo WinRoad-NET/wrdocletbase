@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import net.winroad.wrdoclet.AbstractConfiguration;
 import net.winroad.wrdoclet.builder.AbstractDocBuilder;
 import net.winroad.wrdoclet.builder.DubboDocBuilder;
@@ -54,7 +53,7 @@ public class WRDoc {
 	public WRDoc(Configuration configuration) {
 		this.configuration = configuration;
 		Calendar c = Calendar.getInstance();
-		DateFormat df = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss"); 
+		DateFormat df = new SimpleDateFormat("yyyy.MM.dd HH:mm:ssz");
 		this.docGeneratedDate = df.format(c.getTime());
 		this.builders.add(new RESTDocBuilder(this));
 		this.logger.debug("RESTDocBuilder loaded.");
